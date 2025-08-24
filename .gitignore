@@ -1,0 +1,68 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Distribution / packaging
+.Python
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+*.egg
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# Flask instance folder (contains exam_portal.db and configs)
+instance/
+*.db
+*.sqlite3
+
+# Logs
+*.log
+*.out
+*.err
+
+# Unit test / coverage reports
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.pytest_cache/
+
+# IDE / editor specific
+.vscode/
+.idea/
+*.swp
+*.swo
+*.bak
+
+# OS specific
+.DS_Store
+Thumbs.db
+
+# Environment variables and secrets
+*.env
+.env.*
+secrets.json
+
+# Compiled static files
+*.sassc
+*.css.map
+*.js.map
+
+# Other
+__pypackages__/
+pip-wheel-metadata/
+
+
