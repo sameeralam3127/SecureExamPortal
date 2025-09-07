@@ -24,11 +24,12 @@ def create_app():
     login_manager.init_app(app)
     login_manager.login_view = 'auth.login'
 
-    # Register Blueprints
+    # Import Blueprints
     from .auth.routes import auth_bp
-    from .admin.routes import admin_bp
+    from .admin import admin_bp      # ✅ admin blueprint
     from .student.routes import student_bp
 
+    # Register Blueprints
     app.register_blueprint(auth_bp)
     app.register_blueprint(admin_bp, url_prefix='/admin')
     app.register_blueprint(student_bp, url_prefix='/student')
