@@ -26,7 +26,7 @@ def create_app():
 
     # Import Blueprints
     from .auth.routes import auth_bp
-    from .admin import admin_bp      # ✅ admin blueprint
+    from .admin import admin_bp      
     from .student.routes import student_bp
 
     # Register Blueprints

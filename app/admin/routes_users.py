@@ -5,6 +5,9 @@ from ..models import User, Exam, ExamResult
 from datetime import datetime
 from .decorators import admin_required
 
+# -------------------------
+# Manage Users
+# -------------------------
 @admin_bp.route("/users", methods=["GET", "POST"])
 @admin_required
 def admin_users():
@@ -32,6 +35,9 @@ def admin_users():
     return render_template("admin/users.html", users=users)
 
 
+# -------------------------
+# Edit User
+# -------------------------
 @admin_bp.route("/user/<int:user_id>/edit", methods=["GET", "POST"])
 @admin_required
 def edit_user(user_id):
@@ -48,28 +54,41 @@ def edit_user(user_id):
     return render_template("admin/edit_user.html", user=user)
 
 
+# -------------------------
+# Assign Exam to User
+# -------------------------
 @admin_bp.route("/user/<int:user_id>/assign", methods=["GET", "POST"])
 @admin_required
 def assign_exam(user_id):
     user = User.query.get_or_404(user_id)
     exams = Exam.query.all()
-    taken_exams = [res.exam_id for res in user.exams_taken]
+    # Only consider completed exams as "taken"
+    taken_exams = [res.exam_id for res in user.exams_taken if res.completed]
 
     if request.method == "POST":
         exam_id = request.form.get("exam_id")
         exam = Exam.query.get_or_404(exam_id)
 
-        existing = ExamResult.query.filter_by(user_id=user.id, exam_id=exam.id).first()
+        # Check only for completed exams
+        existing = ExamResult.query.filter_by(user_id=user.id, exam_id=exam.id, completed=True).first()
         if existing:
-            flash(f"{user.username} has already taken {exam.title}.", "warning")
+            flash(f"{user.username} has already completed {exam.title}.", "warning")
             return redirect(url_for("admin.assign_exam", user_id=user.id))
 
+        # Check if there is already an assigned (but not completed) exam
+        assigned = ExamResult.query.filter_by(user_id=user.id, exam_id=exam.id, completed=False).first()
+        if assigned:
+            flash(f"{user.username} has already been assigned {exam.title}.", "info")
+            return redirect(url_for("admin.assign_exam", user_id=user.id))
+
+        # Assign new exam
         exam_result = ExamResult(
             user_id=user.id,
             exam_id=exam.id,
             score=0,
             total_marks=exam.total_marks,
             is_passed=False,
+            completed=False,
             start_time=datetime.utcnow()
         )
         db.session.add(exam_result)
@@ -80,6 +99,10 @@ def assign_exam(user_id):
     return render_template("admin/assign_exam.html", user=user, exams=exams, taken_exams=taken_exams)
 
 
+
+# -------------------------
+# Delete Exam Result
+# -------------------------
 @admin_bp.route("/result/<int:result_id>/delete", methods=["POST"])
 @admin_required
 def delete_result(result_id):

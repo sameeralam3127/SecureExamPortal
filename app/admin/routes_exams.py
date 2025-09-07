@@ -5,12 +5,19 @@ from .. import db
 from ..models import Exam
 from .decorators import admin_required
 
+# -------------------------
+# View All Exams
+# -------------------------
 @admin_bp.route("/exams")
 @admin_required
 def admin_exams():
     exams = Exam.query.all()
     return render_template("admin/exams.html", exams=exams)
 
+
+# -------------------------
+# Create Exam
+# -------------------------
 @admin_bp.route("/exam/create", methods=["GET", "POST"])
 @admin_required
 def create_exam():
@@ -29,6 +36,10 @@ def create_exam():
         return redirect(url_for("admin.admin_exams"))
     return render_template("admin/create_exam.html")
 
+
+# -------------------------
+# Edit Exam
+# -------------------------
 @admin_bp.route("/exam/<int:exam_id>/edit", methods=["GET", "POST"])
 @admin_required
 def edit_exam(exam_id):
@@ -44,6 +55,10 @@ def edit_exam(exam_id):
         return redirect(url_for("admin.admin_exams"))
     return render_template("admin/edit_exam.html", exam=exam)
 
+
+# -------------------------
+# Delete Exam
+# -------------------------
 @admin_bp.route("/exam/<int:exam_id>/delete", methods=["POST"])
 @admin_required
 def delete_exam(exam_id):
