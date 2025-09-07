@@ -22,7 +22,7 @@
       <div class="container">
         <a
           class="navbar-brand"
-          href="{{ url_for('index') }}"
+          href="{{ url_for('auth.index') }}"
           onclick="return confirmExit()"
         >
           <i class="fas fa-graduation-cap me-2"></i>Exam Portal
@@ -40,45 +40,45 @@
             {% if current_user.is_authenticated %} {% if current_user.is_admin
             %}
             <li class="nav-item">
-              <a class="nav-link" href="{{ url_for('dashboard') }}">
+              <a class="nav-link" href="{{ url_for('admin.dashboard') }}">
                 <i class="fas fa-tachometer-alt me-1"></i>Dashboard
               </a>
             </li>
             <li class="nav-item">
-              <a class="nav-link" href="{{ url_for('admin_exams') }}">
+              <a class="nav-link" href="{{ url_for('admin.admin_exams') }}">
                 <i class="fas fa-file-alt me-1"></i>Exams
               </a>
             </li>
             <li class="nav-item">
-              <a class="nav-link" href="{{ url_for('admin_users') }}">
+              <a class="nav-link" href="{{ url_for('admin.admin_users') }}">
                 <i class="fas fa-users me-1"></i>Users
               </a>
             </li>
             <li class="nav-item">
-              <a class="nav-link" href="{{ url_for('admin_reports') }}">
+              <a class="nav-link" href="{{ url_for('admin.admin_reports') }}">
                 <i class="fas fa-chart-bar me-1"></i>Reports
               </a>
             </li>
             {% else %}
             <li class="nav-item">
-              <a class="nav-link" href="{{ url_for('dashboard') }}">
+              <a class="nav-link" href="{{ url_for('student.dashboard') }}">
                 <i class="fas fa-tachometer-alt me-1"></i>Dashboard
               </a>
             </li>
             {% endif %}
             <li class="nav-item">
-              <a class="nav-link" href="{{ url_for('logout') }}">
+              <a class="nav-link" href="{{ url_for('auth.logout') }}">
                 <i class="fas fa-sign-out-alt me-1"></i>Logout
               </a>
             </li>
             {% else %}
             <li class="nav-item">
-              <a class="nav-link" href="{{ url_for('login') }}">
+              <a class="nav-link" href="{{ url_for('auth.login') }}">
                 <i class="fas fa-sign-in-alt me-1"></i>Login
               </a>
             </li>
             <li class="nav-item">
-              <a class="nav-link" href="{{ url_for('register') }}">
+              <a class="nav-link" href="{{ url_for('auth.register') }}">
                 <i class="fas fa-user-plus me-1"></i>Register
               </a>
             </li>
@@ -116,24 +116,24 @@
     <script>
       // Handle navbar scroll effect
       window.addEventListener('scroll', function() {
-          const navbar = document.querySelector('.navbar');
-          if (window.scrollY > 50) {
-              navbar.classList.add('scrolled');
-          } else {
-              navbar.classList.remove('scrolled');
-          }
+        const navbar = document.querySelector('.navbar');
+        if (window.scrollY > 50) {
+          navbar.classList.add('scrolled');
+        } else {
+          navbar.classList.remove('scrolled');
+        }
       });
 
       function confirmExit() {
-          {% if current_user.is_authenticated %}
-              if (confirm('Are you sure you want to exit? You will be logged out.')) {
-                  window.location.href = "{{ url_for('logout') }}";
-                  return false;
-              }
-              return false;
-          {% else %}
-              return true;
-          {% endif %}
+        {% if current_user.is_authenticated %}
+          if (confirm('Are you sure you want to exit? You will be logged out.')) {
+            window.location.href = "{{ url_for('auth.logout') }}";
+            return false;
+          }
+          return false;
+        {% else %}
+          return true;
+        {% endif %}
       }
     </script>
   </body>

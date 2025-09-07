@@ -1,99 +1,134 @@
-{% extends "base.html" %}
-
-{% block title %}Manage Users - Online Exam Portal{% endblock %}
-
-{% block content %}
+{% extends "base.html" %} {% block title %}Manage Users - Online Exam Portal{%
+endblock %} {% block content %}
 <div class="container-fluid">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h1>Manage Users</h1>
-        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addUserModal">
-            <i class="fas fa-user-plus"></i> Add New User
-        </button>
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <h1>Manage Users</h1>
+    <button
+      type="button"
+      class="btn btn-primary"
+      data-bs-toggle="modal"
+      data-bs-target="#addUserModal"
+    >
+      <i class="fas fa-user-plus"></i> Add New User
+    </button>
+  </div>
+
+  <div class="card">
+    <div class="card-body">
+      <div class="table-responsive">
+        <table class="table table-hover">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Username</th>
+              <th>Email</th>
+              <th>Joined Date</th>
+              <th>Exams Taken</th>
+              <th>Status</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for user in users %}
+            <tr>
+              <td>{{ user.id }}</td>
+              <td>{{ user.username }}</td>
+              <td>{{ user.email }}</td>
+              <td>{{ user.created_at.strftime('%Y-%m-%d') }}</td>
+              <td>{{ user.exams_taken|length }}</td>
+              <td>
+                {% if user.is_admin %}
+                <span class="badge bg-primary">Admin</span>
+                {% else %}
+                <span class="badge bg-success">Student</span>
+                {% endif %}
+              </td>
+              <td>
+                <div class="btn-group">
+                  <a
+                    href="{{ url_for('admin.edit_user', user_id=user.id) }}"
+                    class="btn btn-sm btn-warning"
+                  >
+                    <i class="fas fa-edit"></i> Edit
+                  </a>
+                  <a
+                    href="{{ url_for('admin.assign_exam', user_id=user.id) }}"
+                    class="btn btn-sm btn-info"
+                  >
+                    <i class="fas fa-tasks"></i> Assign Exams
+                  </a>
+                </div>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
     </div>
-    
-    <div class="card">
-        <div class="card-body">
-            <div class="table-responsive">
-                <table class="table table-hover">
-                    <thead>
-                        <tr>
-                            <th>ID</th>
-                            <th>Username</th>
-                            <th>Email</th>
-                            <th>Joined Date</th>
-                            <th>Exams Taken</th>
-                            <th>Status</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for user in users %}
-                        <tr>
-                            <td>{{ user.id }}</td>
-                            <td>{{ user.username }}</td>
-                            <td>{{ user.email }}</td>
-                            <td>{{ user.created_at.strftime('%Y-%m-%d') }}</td>
-                            <td>{{ user.exams_taken|length }}</td>
-                            <td>
-                                {% if user.is_admin %}
-                                    <span class="badge bg-primary">Admin</span>
-                                {% else %}
-                                    <span class="badge bg-success">Student</span>
-                                {% endif %}
-                            </td>
-                            <td>
-                                <div class="btn-group">
-                                    <a href="{{ url_for('edit_user', user_id=user.id) }}" class="btn btn-sm btn-warning">
-                                        <i class="fas fa-edit"></i> Edit
-                                    </a>
-                                    <a href="{{ url_for('assign_exam', user_id=user.id) }}" class="btn btn-sm btn-info">
-                                        <i class="fas fa-tasks"></i> Assign Exams
-                                    </a>
-                                </div>
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    </div>
+  </div>
 </div>
 
 <!-- Add User Modal -->
 <div class="modal fade" id="addUserModal" tabindex="-1">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">Add New User</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Add New User</h5>
+        <button
+          type="button"
+          class="btn-close"
+          data-bs-dismiss="modal"
+        ></button>
+      </div>
+      <div class="modal-body">
+        <form method="POST" action="{{ url_for('admin_users') }}">
+          <div class="mb-3">
+            <label for="username" class="form-label">Username</label>
+            <input
+              type="text"
+              class="form-control"
+              id="username"
+              name="username"
+              required
+            />
+          </div>
+          <div class="mb-3">
+            <label for="email" class="form-label">Email</label>
+            <input
+              type="email"
+              class="form-control"
+              id="email"
+              name="email"
+              required
+            />
+          </div>
+          <div class="mb-3">
+            <label for="password" class="form-label">Password</label>
+            <input
+              type="password"
+              class="form-control"
+              id="password"
+              name="password"
+              required
+            />
+          </div>
+          <div class="mb-3">
+            <div class="form-check">
+              <input
+                class="form-check-input"
+                type="checkbox"
+                id="is_admin"
+                name="is_admin"
+              />
+              <label class="form-check-label" for="is_admin">
+                Admin Privileges
+              </label>
             </div>
-            <div class="modal-body">
-                <form method="POST" action="{{ url_for('admin_users') }}">
-                    <div class="mb-3">
-                        <label for="username" class="form-label">Username</label>
-                        <input type="text" class="form-control" id="username" name="username" required>
-                    </div>
-                    <div class="mb-3">
-                        <label for="email" class="form-label">Email</label>
-                        <input type="email" class="form-control" id="email" name="email" required>
-                    </div>
-                    <div class="mb-3">
-                        <label for="password" class="form-label">Password</label>
-                        <input type="password" class="form-control" id="password" name="password" required>
-                    </div>
-                    <div class="mb-3">
-                        <div class="form-check">
-                            <input class="form-check-input" type="checkbox" id="is_admin" name="is_admin">
-                            <label class="form-check-label" for="is_admin">
-                                Admin Privileges
-                            </label>
-                        </div>
-                    </div>
-                    <button type="submit" class="btn btn-primary">Add User</button>
-                </form>
-            </div>
-        </div>
+          </div>
+          <button type="submit" class="btn btn-primary">Add User</button>
+        </form>
+      </div>
     </div>
+  </div>
 </div>
-{% endblock %} 
+{% endblock %}

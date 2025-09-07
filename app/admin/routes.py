@@ -3,40 +3,45 @@ from flask_login import login_required, current_user
 from ..models import User, Exam, Question, ExamResult
 from .. import db
 from datetime import datetime, timedelta
+from functools import wraps
 
 admin_bp = Blueprint('admin', __name__)
 
-# Admin dashboard
+# ---------------- Utility ----------------
+def admin_required(func):
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        if not current_user.is_authenticated or not current_user.is_admin:
+            flash('Access denied. Admin privileges required.', 'danger')
+            return redirect(url_for('student.dashboard'))
+        return func(*args, **kwargs)
+    return wrapper
+
+
+# ---------------- Dashboard ----------------
 @admin_bp.route('/dashboard')
 @login_required
+@admin_required
 def dashboard():
-    if not current_user.is_admin:
-        flash('Access denied')
-        return redirect(url_for('student.dashboard'))
-    
     exams = Exam.query.all()
     users = User.query.filter_by(is_admin=False).all()
     results = ExamResult.query.order_by(ExamResult.start_time.desc()).all()
-    
     return render_template('admin/dashboard.html', exams=exams, users=users, results=results)
 
-# Manage Exams
+
+# ---------------- Manage Exams ----------------
 @admin_bp.route('/exams')
 @login_required
+@admin_required
 def admin_exams():
-    if not current_user.is_admin:
-        flash('Access denied')
-        return redirect(url_for('student.dashboard'))
     exams = Exam.query.all()
     return render_template('admin/exams.html', exams=exams)
 
+
 @admin_bp.route('/exam/create', methods=['GET', 'POST'])
 @login_required
+@admin_required
 def create_exam():
-    if not current_user.is_admin:
-        flash('Access denied')
-        return redirect(url_for('student.dashboard'))
-    
     if request.method == 'POST':
         exam = Exam(
             title=request.form.get('title'),
@@ -48,19 +53,16 @@ def create_exam():
         )
         db.session.add(exam)
         db.session.commit()
-        flash('Exam created successfully!')
+        flash('Exam created successfully!', 'success')
         return redirect(url_for('admin.admin_exams'))
-    
     return render_template('admin/create_exam.html')
+
 
 @admin_bp.route('/exam/<int:exam_id>/edit', methods=['GET', 'POST'])
 @login_required
+@admin_required
 def edit_exam(exam_id):
     exam = Exam.query.get_or_404(exam_id)
-    if not current_user.is_admin:
-        flash('Access denied')
-        return redirect(url_for('student.dashboard'))
-    
     if request.method == 'POST':
         exam.title = request.form.get('title')
         exam.description = request.form.get('description')
@@ -68,19 +70,16 @@ def edit_exam(exam_id):
         exam.total_marks = int(request.form.get('total_marks'))
         exam.passing_marks = int(request.form.get('passing_marks'))
         db.session.commit()
-        flash('Exam updated successfully!')
+        flash('Exam updated successfully!', 'success')
         return redirect(url_for('admin.admin_exams'))
-    
     return render_template('admin/edit_exam.html', exam=exam)
+
 
 @admin_bp.route('/exam/<int:exam_id>/delete', methods=['POST'])
 @login_required
+@admin_required
 def delete_exam(exam_id):
     exam = Exam.query.get_or_404(exam_id)
-    if not current_user.is_admin:
-        flash('Access denied')
-        return redirect(url_for('student.dashboard'))
-    
     try:
         db.session.delete(exam)
         db.session.commit()
@@ -89,18 +88,15 @@ def delete_exam(exam_id):
         db.session.rollback()
         flash('Error deleting exam. Please try again.', 'danger')
         print(f"Error deleting exam: {str(e)}")
-    
     return redirect(url_for('admin.admin_exams'))
 
-# Manage Questions
+
+# ---------------- Manage Questions ----------------
 @admin_bp.route('/exam/<int:exam_id>/questions', methods=['GET', 'POST'])
 @login_required
+@admin_required
 def manage_questions(exam_id):
     exam = Exam.query.get_or_404(exam_id)
-    if not current_user.is_admin:
-        flash('Access denied')
-        return redirect(url_for('student.dashboard'))
-    
     if request.method == 'POST':
         question = Question(
             exam_id=exam_id,
@@ -116,96 +112,118 @@ def manage_questions(exam_id):
         db.session.commit()
         flash('Question added successfully!', 'success')
         return redirect(url_for('admin.manage_questions', exam_id=exam_id))
-    
     return render_template('admin/manage_questions.html', exam=exam)
+
 
 @admin_bp.route('/question/<int:question_id>/delete', methods=['POST'])
 @login_required
+@admin_required
 def delete_question(question_id):
     question = Question.query.get_or_404(question_id)
-    if not current_user.is_admin:
-        flash('Access denied')
-        return redirect(url_for('student.dashboard'))
-    
     exam_id = question.exam_id
     db.session.delete(question)
     db.session.commit()
-    
     flash('Question deleted successfully!', 'success')
     return redirect(url_for('admin.manage_questions', exam_id=exam_id))
 
-# Manage Users
+
+# ---------------- Manage Users ----------------
 @admin_bp.route('/users', methods=['GET', 'POST'])
 @login_required
+@admin_required
 def admin_users():
-    if not current_user.is_admin:
-        flash('Access denied')
-        return redirect(url_for('student.dashboard'))
-    
     if request.method == 'POST':
         username = request.form.get('username')
         email = request.form.get('email')
         password = request.form.get('password')
         is_admin = 'is_admin' in request.form
-        
+
         if User.query.filter_by(username=username).first():
             flash('Username already exists', 'danger')
             return redirect(url_for('admin.admin_users'))
-        
         if User.query.filter_by(email=email).first():
             flash('Email already registered', 'danger')
             return redirect(url_for('admin.admin_users'))
-        
+
         user = User(username=username, email=email, is_admin=is_admin)
         user.set_password(password)
         db.session.add(user)
         db.session.commit()
         flash('User created successfully!', 'success')
         return redirect(url_for('admin.admin_users'))
-    
-    users = User.query.filter_by(is_admin=False).all()
+
+    users = User.query.all()
     return render_template('admin/users.html', users=users)
 
-# Reports
+
+@admin_bp.route('/user/<int:user_id>/edit', methods=['GET', 'POST'])
+@login_required
+@admin_required
+def edit_user(user_id):
+    user = User.query.get_or_404(user_id)
+    if request.method == 'POST':
+        user.username = request.form.get('username')
+        user.email = request.form.get('email')
+
+        new_password = request.form.get('password')
+        if new_password:  # Admin resets password
+            user.set_password(new_password)
+
+        user.is_admin = 'is_admin' in request.form
+        db.session.commit()
+        flash('User updated successfully!', 'success')
+        return redirect(url_for('admin.admin_users'))
+    return render_template('admin/edit_user.html', user=user)
+
+
+@admin_bp.route('/user/<int:user_id>/delete', methods=['POST'])
+@login_required
+@admin_required
+def delete_user(user_id):
+    user = User.query.get_or_404(user_id)
+    if user.is_admin:
+        flash('Cannot delete another admin.', 'danger')
+    else:
+        db.session.delete(user)
+        db.session.commit()
+        flash('User deleted successfully!', 'success')
+    return redirect(url_for('admin.admin_users'))
+
+
+# ---------------- Reports ----------------
 @admin_bp.route('/reports')
 @login_required
+@admin_required
 def admin_reports():
-    if not current_user.is_admin:
-        flash('Access denied', 'danger')
-        return redirect(url_for('student.dashboard'))
-    
     exam_id = request.args.get('exam_id', type=int)
     date_from = request.args.get('date_from')
     date_to = request.args.get('date_to')
     status = request.args.get('status')
-    
+
     query = ExamResult.query.join(User).join(Exam).order_by(ExamResult.start_time.desc())
-    
+
     if exam_id:
         query = query.filter(ExamResult.exam_id == exam_id)
-    
     if date_from:
         try:
             date_from_dt = datetime.strptime(date_from, '%Y-%m-%d')
             query = query.filter(ExamResult.start_time >= date_from_dt)
         except ValueError:
             flash('Invalid date format for Date From', 'warning')
-    
     if date_to:
         try:
             date_to_dt = datetime.strptime(date_to, '%Y-%m-%d') + timedelta(days=1)
             query = query.filter(ExamResult.start_time < date_to_dt)
         except ValueError:
             flash('Invalid date format for Date To', 'warning')
-    
     if status:
         if status == 'passed':
             query = query.filter(ExamResult.is_passed == True)
         elif status == 'failed':
             query = query.filter(ExamResult.is_passed == False)
-    
+
     results = query.all()
-    
+
     total_results = len(results)
     if total_results > 0:
         passed_results = sum(1 for r in results if r.is_passed)
@@ -214,16 +232,15 @@ def admin_reports():
         unique_students = len(set(r.user_id for r in results))
     else:
         pass_rate = avg_score = unique_students = 0
-    
+
     stats = {
         'total_results': total_results,
         'pass_rate': round(pass_rate, 1),
         'avg_score': round(avg_score, 1),
         'unique_students': unique_students
     }
-    
+
     exams = Exam.query.order_by(Exam.title).all()
-    
     return render_template('admin/reports.html',
                            exams=exams,
                            results=results,
