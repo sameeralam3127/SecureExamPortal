@@ -15,7 +15,9 @@ endblock %} {% block content %}
             <i class="fas fa-arrow-left"></i> Back to User
           </a>
         </div>
+
         <div class="card-body">
+          <!-- Assign Exam Form -->
           <form method="POST">
             <div class="mb-3">
               <label for="exam_id" class="form-label">Select Exam</label>
@@ -44,6 +46,7 @@ endblock %} {% block content %}
 
           <hr />
 
+          <!-- Exam History -->
           <h5>Exam History</h5>
           {% if user.exams_taken %}
           <div class="table-responsive">
@@ -63,7 +66,9 @@ endblock %} {% block content %}
                   <td>{{ result.exam.title }}</td>
                   <td>{{ result.score }}/{{ result.total_marks }}</td>
                   <td>
-                    {% if result.is_passed %}
+                    {% if result.is_passed is none %}
+                    <span class="badge bg-warning">Pending</span>
+                    {% elif result.is_passed %}
                     <span class="badge bg-success">Passed</span>
                     {% else %}
                     <span class="badge bg-danger">Failed</span>

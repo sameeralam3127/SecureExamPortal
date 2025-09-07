@@ -50,12 +50,14 @@ class ExamResult(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     exam_id = db.Column(db.Integer, db.ForeignKey('exam.id', ondelete='CASCADE'), nullable=False)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id', ondelete='CASCADE'), nullable=False)
-    score = db.Column(db.Integer)
+    score = db.Column(db.Integer, default=0)
     total_marks = db.Column(db.Integer)
     start_time = db.Column(db.DateTime, default=datetime.utcnow)
     end_time = db.Column(db.DateTime)
-    is_passed = db.Column(db.Boolean)
+    is_passed = db.Column(db.Boolean, default=False)
+    completed = db.Column(db.Boolean, default=False)  # NEW
     answers = db.relationship('UserAnswer', backref='result', lazy=True, cascade='all, delete-orphan')
+
 
 
 class UserAnswer(db.Model):
