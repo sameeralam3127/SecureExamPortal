@@ -81,7 +81,7 @@ endblock %} {% block content %}
         ></button>
       </div>
       <div class="modal-body">
-        <form method="POST" action="{{ url_for('admin_users') }}">
+        <form method="POST" action="{{ url_for('admin.admin_users') }}">
           <div class="mb-3">
             <label for="username" class="form-label">Username</label>
             <input
@@ -120,9 +120,9 @@ endblock %} {% block content %}
                 id="is_admin"
                 name="is_admin"
               />
-              <label class="form-check-label" for="is_admin">
-                Admin Privileges
-              </label>
+              <label class="form-check-label" for="is_admin"
+                >Admin Privileges</label
+              >
             </div>
           </div>
           <button type="submit" class="btn btn-primary">Add User</button>
