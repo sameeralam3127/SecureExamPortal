@@ -62,11 +62,11 @@
                 </div>
                 <div class="col-md-3">
                     <label>Date From</label>
-                    <input type="date" class="form-control" name="date_from" value="{{ filters.date_from or '' }}">
+                    <input type="date" class="form-control" name="date_from" value="{{ filters.date_from }}">
                 </div>
                 <div class="col-md-3">
                     <label>Date To</label>
-                    <input type="date" class="form-control" name="date_to" value="{{ filters.date_to or '' }}">
+                    <input type="date" class="form-control" name="date_to" value="{{ filters.date_to }}">
                 </div>
                 <div class="col-md-3">
                     <label>Status</label>
@@ -141,10 +141,7 @@
 <script>
 function exportToCSV() {
     const table = document.getElementById('resultsTable');
-    if (!table) {
-        alert("No results to export.");
-        return;
-    }
+    if (!table) { alert("No results to export."); return; }
     let csv = [];
     const rows = table.querySelectorAll("tr");
     rows.forEach(row => {
