@@ -90,8 +90,8 @@
         <div class="card-body">
             {% if results %}
             <div class="table-responsive">
-                <table class="table table-bordered" id="resultsTable">
-                    <thead>
+                <table class="table table-bordered table-striped" id="resultsTable">
+                    <thead class="table-dark">
                         <tr>
                             <th>Student</th>
                             <th>Exam</th>
@@ -104,10 +104,13 @@
                     </thead>
                     <tbody>
                         {% for r in results %}
-                        <tr>
+                        <tr class="{% if not r.is_passed %}table-danger{% else %}table-success{% endif %}">
                             <td>{{ r.student.username }}</td>
                             <td>{{ r.exam.title }}</td>
-                            <td>{{ r.score }}/{{ r.total_marks }} ({{ (r.score / r.total_marks * 100)|round(1) }}%)</td>
+                            <td>
+                                {{ r.score }}/{{ r.total_marks }}
+                                ({{ (r.score / r.total_marks * 100)|round(1) if r.total_marks else 0 }}%)
+                            </td>
                             <td>
                                 <span class="badge {% if r.is_passed %}bg-success{% else %}bg-danger{% endif %}">
                                     {{ "Passed" if r.is_passed else "Failed" }}
@@ -138,19 +141,23 @@
     </div>
 </div>
 
+<!-- Export CSV Script -->
 <script>
 function exportToCSV() {
     const table = document.getElementById('resultsTable');
     if (!table) { alert("No results to export."); return; }
+
     let csv = [];
     const rows = table.querySelectorAll("tr");
     rows.forEach(row => {
         const cols = row.querySelectorAll("th, td");
         csv.push(Array.from(cols).map(c => c.innerText.replace(/,/g, ";")).join(","));
     });
+
     const blob = new Blob([csv.join("\n")], { type: "text/csv" });
     const link = document.createElement("a");
     link.href = window.URL.createObjectURL(blob);
+    link
     link.download = "exam_reports.csv";
     link.click();
 }

@@ -5,39 +5,39 @@ from ..models import Exam, ExamResult, User
 from .decorators import admin_required
 from datetime import datetime, timedelta
 
+# Admin Reports Route
 @admin_bp.route("/reports", methods=["GET"], endpoint="admin_reports")
 @admin_required
 def reports():
-    # Get filter params
     exam_id = request.args.get("exam_id", type=int)
     date_from = request.args.get("date_from")
     date_to = request.args.get("date_to")
     status = request.args.get("status")
 
-    # Base query
-    query = ExamResult.query.join(User).join(Exam).order_by(ExamResult.start_time.desc())
+    # Base query: only completed exams
+    query = ExamResult.query.join(User).join(Exam).filter(ExamResult.completed.is_(True)).order_by(ExamResult.start_time.desc())
 
-    # Filter by exam
+    # Apply filters
     if exam_id:
         query = query.filter(ExamResult.exam_id == exam_id)
 
-    # Filter by date_from
+    date_from_value, date_to_value = "", ""
     if date_from:
         try:
-            date_from_dt = datetime.strptime(date_from, "%Y-%m-%d")
-            query = query.filter(ExamResult.start_time >= date_from_dt)
+            dt = datetime.strptime(date_from, "%Y-%m-%d")
+            query = query.filter(ExamResult.start_time >= dt)
+            date_from_value = dt.strftime("%Y-%m-%d")
         except ValueError:
-            flash("Invalid 'Date From' format. Use YYYY-MM-DD.", "warning")
+            flash("Invalid 'Date From'. Use the date picker.", "warning")
 
-    # Filter by date_to
     if date_to:
         try:
-            date_to_dt = datetime.strptime(date_to, "%Y-%m-%d") + timedelta(days=1)
-            query = query.filter(ExamResult.start_time < date_to_dt)
+            dt = datetime.strptime(date_to, "%Y-%m-%d") + timedelta(days=1)
+            query = query.filter(ExamResult.start_time < dt)
+            date_to_value = (dt - timedelta(days=1)).strftime("%Y-%m-%d")
         except ValueError:
-            flash("Invalid 'Date To' format. Use YYYY-MM-DD.", "warning")
+            flash("Invalid 'Date To'. Use the date picker.", "warning")
 
-    # Filter by status
     if status == "passed":
         query = query.filter(ExamResult.is_passed.is_(True))
     elif status == "failed":
@@ -45,11 +45,13 @@ def reports():
 
     results = query.all()
 
-    # Compute stats
+    # Compute statistics safely
     total = len(results)
     passed = sum(1 for r in results if r.is_passed)
     pass_rate = round((passed / total) * 100, 1) if total else 0
-    avg_score = round(sum((r.score / r.total_marks) * 100 for r in results) / total, 1) if total else 0
+    avg_score = round(
+        sum((r.score / r.total_marks * 100) for r in results if r.total_marks) / total, 1
+    ) if total else 0
     unique_students = len(set(r.user_id for r in results))
 
     stats = {
@@ -68,12 +70,14 @@ def reports():
         stats=stats,
         filters={
             "exam_id": exam_id,
-            "date_from": date_from,
-            "date_to": date_to,
+            "date_from": date_from_value,
+            "date_to": date_to_value,
             "status": status,
         },
     )
 
+
+# Delete an Exam Result
 @admin_bp.route("/reports/result/<int:result_id>/delete", methods=["POST"])
 @admin_required
 def delete_report_result(result_id):
