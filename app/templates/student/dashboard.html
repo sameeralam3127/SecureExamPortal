@@ -5,134 +5,108 @@ Portal{% endblock %} {% block content %}
   <div class="row mb-4">
     <div class="col-12">
       <div class="card bg-gradient-primary text-white">
-        <div class="card-body">
-          <div class="d-flex justify-content-between align-items-center">
-            <div>
-              <h2 class="mb-1">Welcome, {{ current_user.username }}!</h2>
-              <p class="mb-0">Track your progress and take exams</p>
-            </div>
-            <div class="text-end">
-              <h3 class="mb-0">{{ current_user.exams_taken|length }}</h3>
-              <small>Exams Completed</small>
-            </div>
+        <div
+          class="card-body d-flex justify-content-between align-items-center"
+        >
+          <div>
+            <h2>Welcome, {{ current_user.username }}!</h2>
+            <p>Track your progress and take exams</p>
+          </div>
+          <div class="text-end">
+            <h3>{{ past_exams|length }}</h3>
+            <small>Exams Completed</small>
           </div>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- Quick Stats -->
+  <!-- Stats -->
   <div class="row mb-4">
     <div class="col-md-4">
       <div class="card stat-card bg-primary text-white h-100">
-        <div class="card-body">
-          <div class="d-flex justify-content-between align-items-center">
-            <div>
-              <h6 class="card-title mb-0">Exams Taken</h6>
-              <h2 class="mt-2 mb-0">{{ past_exams|length }}</h2>
-            </div>
-            <div class="stat-icon">
-              <i class="fas fa-clipboard-list fa-2x"></i>
-            </div>
+        <div
+          class="card-body d-flex justify-content-between align-items-center"
+        >
+          <div>
+            <h6>Exams Taken</h6>
+            <h2>{{ past_exams|length }}</h2>
           </div>
+          <i class="fas fa-clipboard-list fa-2x"></i>
         </div>
       </div>
     </div>
     <div class="col-md-4">
       <div class="card stat-card bg-success text-white h-100">
-        <div class="card-body">
-          <div class="d-flex justify-content-between align-items-center">
-            <div>
-              <h6 class="card-title mb-0">Exams Passed</h6>
-              <h2 class="mt-2 mb-0">
-                {{ past_exams|selectattr('is_passed', 'equalto',
-                true)|list|length }}
-              </h2>
-            </div>
-            <div class="stat-icon">
-              <i class="fas fa-check-circle fa-2x"></i>
-            </div>
+        <div
+          class="card-body d-flex justify-content-between align-items-center"
+        >
+          <div>
+            <h6>Exams Passed</h6>
+            <h2>
+              {{ past_exams|selectattr('is_passed', 'equalto', true)|list|length
+              }}
+            </h2>
           </div>
+          <i class="fas fa-check-circle fa-2x"></i>
         </div>
       </div>
     </div>
     <div class="col-md-4">
       <div class="card stat-card bg-info text-white h-100">
-        <div class="card-body">
-          <div class="d-flex justify-content-between align-items-center">
-            <div>
-              <h6 class="card-title mb-0">Available Exams</h6>
-              <h2 class="mt-2 mb-0">{{ available_exams|length }}</h2>
-            </div>
-            <div class="stat-icon">
-              <i class="fas fa-book fa-2x"></i>
-            </div>
+        <div
+          class="card-body d-flex justify-content-between align-items-center"
+        >
+          <div>
+            <h6>Available Exams</h6>
+            <h2>{{ available_exams|length }}</h2>
           </div>
+          <i class="fas fa-book fa-2x"></i>
         </div>
       </div>
     </div>
   </div>
 
   <div class="row">
-    <!-- Available Exams Section -->
+    <!-- Assigned Exams (Not Attempted) -->
     <div class="col-md-6">
       <div class="card shadow-sm h-100">
         <div class="card-header bg-white">
-          <h5 class="card-title mb-0">
-            <i class="fas fa-list-alt me-2"></i>Available Exams
-          </h5>
+          <h5><i class="fas fa-list-alt me-2"></i>Assigned Exams</h5>
         </div>
         <div class="card-body">
-          {% if available_exams %}
+          {% if not_attempted_results %}
           <div class="list-group list-group-flush">
-            {% for exam in available_exams %}
+            {% for res in not_attempted_results %}
             <div class="list-group-item border-0 mb-3 shadow-sm rounded">
               <div
                 class="d-flex w-100 justify-content-between align-items-center mb-2"
               >
-                <h5 class="mb-1">{{ exam.title }}</h5>
-                <span class="badge bg-primary rounded-pill"
-                  >{{ exam.duration }} min</span
-                >
+                <h5>{{ res.exam.title }}</h5>
+                <span class="badge bg-warning rounded-pill">Not Attempted</span>
               </div>
-              <p class="mb-2 text-muted">{{ exam.description }}</p>
-              <div class="d-flex justify-content-between align-items-center">
-                <div>
-                  <span class="badge bg-light text-dark">
-                    <i class="fas fa-star me-1"></i>{{ exam.total_marks }} marks
-                  </span>
-                  <span class="badge bg-light text-dark ms-2">
-                    <i class="fas fa-check-circle me-1"></i>{{
-                    exam.passing_marks }} to pass
-                  </span>
-                </div>
-                <a
-                  href="{{ url_for('student.start_exam', exam_id=exam.id) }}"
-                  class="btn btn-primary btn-sm"
-                >
-                  <i class="fas fa-play me-1"></i>Start Exam
-                </a>
-              </div>
+              <p class="mb-2 text-muted">{{ res.exam.description }}</p>
+              <a
+                href="{{ url_for('student.start_exam', exam_id=res.exam.id) }}"
+                class="btn btn-primary btn-sm"
+              >
+                <i class="fas fa-play me-1"></i>Start Exam
+              </a>
             </div>
             {% endfor %}
           </div>
           {% else %}
-          <div class="text-center py-5">
-            <i class="fas fa-clipboard-list fa-3x text-muted mb-3"></i>
-            <p class="text-muted">No exams available at the moment.</p>
-          </div>
+          <p class="text-muted">No exams assigned yet.</p>
           {% endif %}
         </div>
       </div>
     </div>
 
-    <!-- Past Exams Section -->
+    <!-- Past Exams -->
     <div class="col-md-6">
       <div class="card shadow-sm h-100">
         <div class="card-header bg-white">
-          <h5 class="card-title mb-0">
-            <i class="fas fa-history me-2"></i>Past Exams
-          </h5>
+          <h5><i class="fas fa-history me-2"></i>Past Exams</h5>
         </div>
         <div class="card-body">
           {% if past_exams %}
@@ -150,43 +124,20 @@ Portal{% endblock %} {% block content %}
               <tbody>
                 {% for result in past_exams %}
                 <tr>
-                  <td>
-                    <div class="d-flex align-items-center">
-                      <div class="exam-icon me-2">
-                        <i class="fas fa-file-alt"></i>
-                      </div>
-                      <div>{{ result.exam.title }}</div>
-                    </div>
-                  </td>
-                  <td>
-                    <div class="progress" style="width: 60px; height: 6px">
-                      <div
-                        class="progress-bar {% if result.is_passed %}bg-success{% else %}bg-danger{% endif %}"
-                        role="progressbar"
-                        style="width: {{ (result.score / result.total_marks) * 100 }}%"
-                      ></div>
-                    </div>
-                    <small class="text-muted"
-                      >{{ result.score }}/{{ result.total_marks }}</small
-                    >
-                  </td>
+                  <td>{{ result.exam.title }}</td>
+                  <td>{{ result.score }}/{{ result.total_marks }}</td>
                   <td>
                     {% if result.is_passed %}
-                    <span class="badge bg-success-subtle text-success">
-                      <i class="fas fa-check-circle me-1"></i>Passed
-                    </span>
+                    <span class="badge bg-success-subtle text-success"
+                      >Passed</span
+                    >
                     {% else %}
-                    <span class="badge bg-danger-subtle text-danger">
-                      <i class="fas fa-times-circle me-1"></i>Failed
-                    </span>
+                    <span class="badge bg-danger-subtle text-danger"
+                      >Failed</span
+                    >
                     {% endif %}
                   </td>
-                  <td>
-                    <small class="text-muted">
-                      <i class="far fa-calendar-alt me-1"></i>
-                      {{ result.start_time.strftime('%Y-%m-%d') }}
-                    </small>
-                  </td>
+                  <td>{{ result.start_time.strftime('%Y-%m-%d') }}</td>
                   <td>
                     <a
                       href="{{ url_for('student.view_result', result_id=result.id) }}"
@@ -201,82 +152,11 @@ Portal{% endblock %} {% block content %}
             </table>
           </div>
           {% else %}
-          <div class="text-center py-5">
-            <i class="fas fa-history fa-3x text-muted mb-3"></i>
-            <p class="text-muted">You haven't taken any exams yet.</p>
-          </div>
+          <p class="text-muted">You haven't completed any exams yet.</p>
           {% endif %}
         </div>
       </div>
     </div>
   </div>
 </div>
-
-<style>
-  .bg-gradient-primary {
-    background: linear-gradient(45deg, #4e73df 0%, #224abe 100%);
-  }
-
-  .stat-card {
-    transition: transform 0.2s;
-    border: none;
-    border-radius: 10px;
-  }
-
-  .stat-card:hover {
-    transform: translateY(-5px);
-  }
-
-  .stat-icon {
-    opacity: 0.8;
-  }
-
-  .exam-icon {
-    width: 32px;
-    height: 32px;
-    background-color: #f8f9fa;
-    border-radius: 8px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: #4e73df;
-  }
-
-  .badge {
-    font-weight: 500;
-  }
-
-  .bg-success-subtle {
-    background-color: rgba(40, 167, 69, 0.1);
-  }
-
-  .bg-danger-subtle {
-    background-color: rgba(220, 53, 69, 0.1);
-  }
-
-  .list-group-item {
-    transition: transform 0.2s;
-  }
-
-  .list-group-item:hover {
-    transform: translateX(5px);
-  }
-
-  .progress {
-    background-color: #e9ecef;
-    border-radius: 3px;
-  }
-
-  .table > :not(caption) > * > * {
-    padding: 1rem 0.75rem;
-  }
-
-  .btn-outline-primary {
-    border-width: 1px;
-  }
-
-  .btn-outline-primary:hover {
-    transform: translateY(-1px);
-  }
-</style>
 {% endblock %}
