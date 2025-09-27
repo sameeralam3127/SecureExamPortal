@@ -14,8 +14,8 @@ def reports():
     date_to = request.args.get("date_to")
     status = request.args.get("status")
 
-    # Base query: only completed exams
-    query = ExamResult.query.join(User).join(Exam).filter(ExamResult.completed.is_(True)).order_by(ExamResult.start_time.desc())
+    # Base query: only completed exams (works with DB booleans stored as 0/1)
+    query = ExamResult.query.join(User).join(Exam).filter(ExamResult.completed == 1).order_by(ExamResult.start_time.desc())
 
     # Apply filters
     if exam_id:
@@ -39,9 +39,9 @@ def reports():
             flash("Invalid 'Date To'. Use the date picker.", "warning")
 
     if status == "passed":
-        query = query.filter(ExamResult.is_passed.is_(True))
+        query = query.filter(ExamResult.is_passed == 1)
     elif status == "failed":
-        query = query.filter(ExamResult.is_passed.is_(False))
+        query = query.filter(ExamResult.is_passed == 0)
 
     results = query.all()
 
