@@ -1,0 +1,25 @@
+[tool.poetry]
+name = "secure-exam-portal"
+version = "1.0.0"
+description = "A secure online exam portal built with Flask for MCA projects"
+authors = ["Sameer Alam"]
+readme = "README.md"
+license = "MIT"
+homepage = "https://sameeralam3127.pythonanywhere.com/"
+
+[tool.poetry.dependencies]
+python = "^3.10"
+Flask = "3.0.2"
+Flask-SQLAlchemy = "3.1.1"
+Flask-Login = "0.6.3"
+Flask-WTF = "1.2.1"
+Werkzeug = "3.0.6"
+python-dotenv = "1.0.1"
+SQLAlchemy = "2.0.41"
+
+[tool.poetry.scripts]
+start = "run:main"
+
+[build-system]
+requires = ["poetry-core>=1.5.0"]
+build-backend = "poetry.core.masonry.api"
