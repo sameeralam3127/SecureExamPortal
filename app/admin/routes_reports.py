@@ -4,6 +4,7 @@ from .. import db
 from ..models import Exam, ExamResult, User
 from .decorators import admin_required
 from datetime import datetime, timedelta
+from sqlalchemy.orm import joinedload
 
 # -------------------------------
 # Admin Reports Route
@@ -11,19 +12,23 @@ from datetime import datetime, timedelta
 @admin_bp.route("/reports", methods=["GET"], endpoint="admin_reports")
 @admin_required
 def reports():
-    # Get filter values
+    # Get filter values from query string
     exam_id = request.args.get("exam_id", type=int)
     date_from = request.args.get("date_from")
     date_to = request.args.get("date_to")
     status = request.args.get("status")
 
-    # Base query: join User and Exam
-    query = ExamResult.query.join(User).join(Exam).order_by(ExamResult.start_time.desc())
+    # Base query with eager loading for relationships
+    query = ExamResult.query.options(
+        joinedload(ExamResult.student),
+        joinedload(ExamResult.exam)
+    ).order_by(ExamResult.start_time.desc())
 
-    # Apply filters
+    # Apply exam filter
     if exam_id:
         query = query.filter(ExamResult.exam_id == exam_id)
 
+    # Apply date filters safely
     date_from_value, date_to_value = "", ""
     if date_from:
         try:
@@ -41,20 +46,22 @@ def reports():
         except ValueError:
             flash("Invalid 'Date To'. Use YYYY-MM-DD.", "warning")
 
+    # Apply status filter
     if status == "passed":
-        query = query.filter(ExamResult.is_passed == True)
+        query = query.filter(ExamResult.is_passed.is_(True))
     elif status == "failed":
-        query = query.filter(ExamResult.is_passed == False)
+        query = query.filter(ExamResult.is_passed.is_(False))
 
+    # Fetch results
     results = query.all()
 
-    # Compute statistics
+    # Compute statistics safely
     total = len(results)
     passed = sum(1 for r in results if r.is_passed)
     pass_rate = round((passed / total) * 100, 1) if total else 0
 
-    valid_scores = [r.score / r.total_marks * 100 for r in results if r.total_marks]
-    avg_score = round(sum(valid_scores) / total, 1) if total else 0
+    valid_scores = [r.score / r.total_marks * 100 for r in results if r.total_marks and r.total_marks > 0]
+    avg_score = round(sum(valid_scores) / len(valid_scores), 1) if valid_scores else 0
 
     unique_students = len(set(r.user_id for r in results))
 
@@ -65,6 +72,7 @@ def reports():
         "unique_students": unique_students,
     }
 
+    # Load exams for filter dropdown
     exams = Exam.query.order_by(Exam.title).all()
 
     return render_template(
