@@ -1,0 +1,174 @@
+{% extends "base.html" %} {% block title %}Admin Dashboard{% endblock %} {%
+block content %}
+<div class="container-fluid">
+  <!-- Welcome Section -->
+  <div class="row mb-4">
+    <div class="col-12">
+      <div class="card bg-gradient-primary text-white">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-center">
+            <div>
+              <h4 class="mb-1">Welcome, {{ current_user.username }}!</h4>
+              <p class="mb-0">
+                Here's what's happening with your exam portal today.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Quick Stats -->
+  <div class="row mb-4">
+    <div class="col-md-3">
+      <div class="card stat-card bg-primary text-white">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-center">
+            <div>
+              <h6 class="card-title mb-0">Total Students</h6>
+              <h2 class="mt-2 mb-0">{{ users|length }}</h2>
+            </div>
+            <div class="stat-icon">
+              <i class="fas fa-users fa-2x"></i>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card stat-card bg-success text-white">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-center">
+            <div>
+              <h6 class="card-title mb-0">Total Exams</h6>
+              <h2 class="mt-2 mb-0">{{ exams|length }}</h2>
+            </div>
+            <div class="stat-icon">
+              <i class="fas fa-file-alt fa-2x"></i>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card stat-card bg-info text-white">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-center">
+            <div>
+              <h6 class="card-title mb-0">Active Exams</h6>
+              <h2 class="mt-2 mb-0">
+                {{ exams|selectattr('is_active', 'true')|list|length }}
+              </h2>
+            </div>
+            <div class="stat-icon">
+              <i class="fas fa-check-circle fa-2x"></i>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card stat-card bg-warning text-white">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-center">
+            <div>
+              <h6 class="card-title mb-0">Total Results</h6>
+              <h2 class="mt-2 mb-0">{{ results|length }}</h2>
+            </div>
+            <div class="stat-icon">
+              <i class="fas fa-chart-bar fa-2x"></i>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Quick Actions -->
+  <div class="row mb-4">
+    <div class="col-12">
+      <div class="card">
+        <div class="card-header bg-white">
+          <h5 class="card-title mb-0">Quick Actions</h5>
+        </div>
+        <div class="card-body">
+          <div class="row g-3">
+            <div class="col-md-3">
+              <a
+                href="{{ url_for('admin.create_exam') }}"
+                class="btn btn-primary w-100"
+              >
+                <i class="fas fa-plus-circle me-2"></i>Create New Exam
+              </a>
+            </div>
+            <div class="col-md-3">
+              <a
+                href="{{ url_for('admin.admin_users') }}"
+                class="btn btn-success w-100"
+              >
+                <i class="fas fa-users me-2"></i>Manage Users
+              </a>
+            </div>
+            <div class="col-md-3">
+              <a
+                href="{{ url_for('admin.admin_reports') }}"
+                class="btn btn-info w-100"
+              >
+                <i class="fas fa-chart-line me-2"></i>View Reports
+              </a>
+            </div>
+            <div class="col-md-3">
+              <a
+                href="{{ url_for('admin.admin_exams') }}"
+                class="btn btn-warning w-100"
+              >
+                <i class="fas fa-tasks me-2"></i>Manage Exams
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+  .bg-gradient-primary {
+    background: linear-gradient(45deg, #4e73df 0%, #224abe 100%);
+  }
+
+  .stat-card {
+    border: none;
+    border-radius: 10px;
+    transition: transform 0.2s;
+  }
+
+  .stat-card:hover {
+    transform: translateY(-5px);
+  }
+
+  .stat-icon {
+    opacity: 0.8;
+  }
+
+  .badge {
+    padding: 0.5em 0.8em;
+    font-weight: 500;
+  }
+
+  .btn {
+    padding: 0.5rem 1rem;
+    font-weight: 500;
+  }
+
+  .card {
+    border: none;
+    box-shadow: 0 0.15rem 1.75rem 0 rgba(58, 59, 69, 0.15);
+  }
+
+  .card-header {
+    border-bottom: 1px solid #e3e6f0;
+  }
+</style>
+{% endblock %}
