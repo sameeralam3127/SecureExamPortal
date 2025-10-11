@@ -2,10 +2,15 @@
 name = "secure-exam-portal"
 version = "1.0.0"
 description = "A secure online exam portal built with Flask for MCA projects"
-authors = ["Sameer Alam"]
+authors = ["Sameer Alam <sameeralam@example.com>"]
 readme = "README.md"
 license = "MIT"
 homepage = "https://sameeralam3127.pythonanywhere.com/"
+
+# Disable package installation as root if you don't intend to distribute it
+packages = [
+    { include = "app" }
+]
 
 [tool.poetry.dependencies]
 python = "^3.10"
@@ -18,6 +23,7 @@ python-dotenv = "1.0.1"
 SQLAlchemy = "2.0.41"
 
 [tool.poetry.scripts]
+# Allows running your app with: poetry run start
 start = "run:main"
 
 [build-system]

@@ -45,25 +45,32 @@ A comprehensive **MCA Project** built with Flask for secure online exam conducti
 - **ExamResult**: records student results
 - **UserAnswer**: tracks selected answers
 
-### Setup Instructions
+---
+
+## Setup Instructions (Poetry)
 
 ```bash
 # Clone the repository
 git clone https://github.com/sameeralam3127/SecureExamPortal.git
 cd SecureExamPortal
 
-# Virtual environment
-python -m venv venv
-source venv/bin/activate  # Windows: venv\Scripts\activate
+# Install Poetry (if not already installed)
+/bin/bash -c "$(curl -sSL https://install.python-poetry.org)"
+
+# Make sure poetry is in your PATH
+export PATH="$HOME/.local/bin:$PATH"
 
 # Install dependencies
-pip install -r requirements.txt
+poetry install
 
-# Run app
-python app.py
+# Activate virtual environment
+poetry shell
+
+# Run the application
+poetry run start
 ```
 
-Default credentials:
+**Default credentials:**
 
 - Admin → `admin / admin123`
 - Student → `student1 / student123`
