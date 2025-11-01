@@ -43,9 +43,9 @@ Flask App Factory
 
 Users can log in using Google account for easy authentication.
 
-![alt text](image.png)
-![alt text](image-1.png)
-![alt text](image-2.png)
-![alt text](image-3.png)
+![alt text](screenshot/image.png)
+![alt text](screenshot/image-1.png)
+![alt text](screenshot/image-2.png)
+![alt text](screenshot/image-3.png)
 
 ---
