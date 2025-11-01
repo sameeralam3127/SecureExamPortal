@@ -7,6 +7,10 @@ The system provides role-based dashboards for **Admins** and **Students**, ensur
 
 **Live Demo:** [https://sameeralam3127.pythonanywhere.com/](https://sameeralam3127.pythonanywhere.com/)
 
+```markdown
+See the [Screenshots & Architecture](SCREENSHOT.md) for more details.
+```
+
 ---
 
 ## Features
