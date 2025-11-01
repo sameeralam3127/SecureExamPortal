@@ -31,7 +31,7 @@ def main():
     port = 5001
     while True:
         try:
-            app.run(debug=True, port=port)
+            app.run(debug=True, host="0.0.0.0",port=port)
             break
         except OSError as e:
             if "Address already in use" in str(e):
