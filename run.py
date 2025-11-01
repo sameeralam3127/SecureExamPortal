@@ -28,7 +28,7 @@ def main():
         db.create_all()
 
     # Try multiple ports if busy
-    port = 5001
+    port = 5000
     while True:
         try:
             app.run(debug=True, host="0.0.0.0",port=port)
