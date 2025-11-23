@@ -65,4 +65,4 @@ secrets.json
 # Other
 __pypackages__/
 pip-wheel-metadata/
-
+/node_modules

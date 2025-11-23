@@ -1,0 +1,16 @@
+{
+  "name": "secureexamportal",
+  "version": "1.0.0",
+  "description": "A comprehensive **MCA Project** built with Flask for **secure online examinations**. It supports both **local login** (username/password) and **Google Account login** for convenience and enhanced security.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@tailwindcss/cli": "^4.1.17",
+    "tailwindcss": "^4.1.17"
+  }
+}

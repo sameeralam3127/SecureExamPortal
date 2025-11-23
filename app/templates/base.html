@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{% block title %}Exam Portal{% endblock %}</title>
+
+    <!-- Tailwind CSS (offline) -->
+    <link
+      href="{{ url_for('static', filename='css/output.css') }}"
+      rel="stylesheet"
+    />
+  </head>
+  <body class="min-h-screen bg-gray-950 text-white flex flex-col">
+    <!-- HEADER / NAVBAR -->
+    <header class="bg-gray-900 border-b border-gray-800">
+      <div
+        class="max-w-7xl mx-auto px-6 py-4 flex justify-between items-center"
+      >
+        <a
+          href="{{ url_for('auth.index') }}"
+          class="text-2xl font-extrabold text-indigo-500"
+        >
+          Exam<span class="text-white">Portal</span>
+        </a>
+
+        <nav class="space-x-6">
+          {% if current_user.is_authenticated %} {% if current_user.is_admin %}
+          <a
+            href="{{ url_for('admin.dashboard') }}"
+            class="hover:text-indigo-400"
+            >Admin</a
+          >
+          {% else %}
+          <a
+            href="{{ url_for('student.dashboard') }}"
+            class="hover:text-indigo-400"
+            >Dashboard</a
+          >
+          {% endif %}
+          <a
+            href="{{ url_for('auth.logout') }}"
+            class="text-red-400 hover:text-red-500"
+            >Logout</a
+          >
+          {% else %}
+          <a href="{{ url_for('auth.login') }}" class="hover:text-indigo-400"
+            >Login</a
+          >
+          <a
+            href="{{ url_for('auth.register') }}"
+            class="bg-indigo-600 px-4 py-2 rounded-lg hover:bg-indigo-700 transition"
+          >
+            Register
+          </a>
+          {% endif %}
+        </nav>
+      </div>
+    </header>
+
+    <!-- CONTENT -->
+    <main class="flex-1">{% block content %}{% endblock %}</main>
+
+    <!-- FOOTER -->
+    <footer class="bg-gray-900 border-t border-gray-800 mt-10">
+      <div class="max-w-7xl mx-auto px-6 py-6 text-center text-gray-500">
+        © 2025 Secure Exam Portal • All rights reserved
+      </div>
+    </footer>
+  </body>
+</html>
