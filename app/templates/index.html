@@ -1,120 +1,144 @@
-<!DOCTYPE html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <title>Secure Exam Portal</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-
-    <!-- OFFLINE Tailwind CSS -->
-    <link href="app/static/css/output.css" rel="stylesheet" />
-  </head>
-
-  <body class="bg-gray-950 text-white min-h-screen flex flex-col">
-    <!-- ================= HEADER ================= -->
-    <header class="bg-gray-900 border-b border-gray-800">
-      <div
-        class="max-w-7xl mx-auto px-6 py-4 flex justify-between items-center"
+{% extends "base.html" %} {% block title %}Welcome - Secure Exam Portal{%
+endblock %} {% block content %}
+<!-- Hero Section -->
+<div class="hero-section text-center py-5 mb-5">
+  <div class="container">
+    <h1 class="display-3 fw-bold mb-4">Welcome to Online Exam Portal</h1>
+    <p class="lead mb-4">
+      A modern platform for conducting secure and efficient online examinations
+    </p>
+    {% if not current_user.is_authenticated %}
+    <div class="cta-buttons">
+      <a href="{{ url_for('auth.login') }}" class="btn btn-primary btn-lg me-3">
+        Get Started
+      </a>
+      <a
+        href="{{ url_for('auth.register') }}"
+        class="btn btn-outline-primary btn-lg"
       >
-        <h1 class="text-2xl font-bold text-indigo-500">
-          Exam<span class="text-white">Portal</span>
-        </h1>
+        Register Now
+      </a>
+    </div>
+    {% endif %}
+  </div>
+</div>
 
-        <div class="space-x-4">
-          <a href="#" class="hover:text-indigo-400">Login</a>
-          <a
-            href="#"
-            class="bg-indigo-600 px-4 py-2 rounded-lg hover:bg-indigo-700 transition"
-          >
-            Register
-          </a>
+<!-- Features Section -->
+<div class="container">
+  <h2 class="text-center mb-5">Why Choose Our Platform?</h2>
+  <div class="row g-4">
+    <div class="col-md-4">
+      <div class="feature-card card h-100">
+        <div class="card-body text-center">
+          <div class="feature-icon mb-3">
+            <i class="fas fa-shield-alt fa-3x text-primary"></i>
+          </div>
+          <h5 class="card-title">Secure Exams</h5>
+          <p class="card-text">
+            Advanced proctoring system with real-time monitoring and
+            anti-cheating measures.
+          </p>
         </div>
       </div>
-    </header>
-
-    <!-- ================= HERO ================= -->
-    <main class="flex-1">
-      <section class="max-w-7xl mx-auto px-6 py-24 text-center">
-        <h2 class="text-5xl md:text-6xl font-extrabold mb-6 leading-tight">
-          The Future of <span class="text-indigo-500">Online Exams</span>
-        </h2>
-
-        <p class="text-gray-400 max-w-2xl mx-auto mb-10 text-lg">
-          A powerful, secure and modern platform to conduct online examinations
-          with real-time evaluation and full admin control.
-        </p>
-
-        <div class="flex justify-center gap-6">
-          <a
-            href="#"
-            class="bg-indigo-600 px-8 py-3 rounded-xl text-lg font-semibold hover:bg-indigo-700 transition"
-          >
-            Get Started
-          </a>
-
-          <a
-            href="#"
-            class="border border-indigo-600 px-8 py-3 rounded-xl text-lg font-semibold hover:bg-indigo-600 hover:text-white transition"
-          >
-            Learn More
-          </a>
-        </div>
-      </section>
-
-      <!-- ================= FEATURES ================= -->
-      <section class="max-w-7xl mx-auto px-6 py-10 grid md:grid-cols-3 gap-8">
-        <div
-          class="bg-gray-900 p-6 rounded-xl border border-gray-800 text-center"
-        >
-          <h3 class="text-xl font-bold mb-2 text-indigo-400">Secure System</h3>
-          <p class="text-gray-400">
-            Advanced security system with monitoring and anti-cheating.
+    </div>
+    <div class="col-md-4">
+      <div class="feature-card card h-100">
+        <div class="card-body text-center">
+          <div class="feature-icon mb-3">
+            <i class="fas fa-chart-line fa-3x text-primary"></i>
+          </div>
+          <h5 class="card-title">Real-time Analytics</h5>
+          <p class="card-text">
+            Instant results and detailed performance analytics with
+            comprehensive reports.
           </p>
         </div>
-
-        <div
-          class="bg-gray-900 p-6 rounded-xl border border-gray-800 text-center"
-        >
-          <h3 class="text-xl font-bold mb-2 text-indigo-400">
-            Instant Results
-          </h3>
-          <p class="text-gray-400">Auto checking and real-time exam results.</p>
-        </div>
-
-        <div
-          class="bg-gray-900 p-6 rounded-xl border border-gray-800 text-center"
-        >
-          <h3 class="text-xl font-bold mb-2 text-indigo-400">
-            Admin Dashboard
-          </h3>
-          <p class="text-gray-400">
-            Powerful tools for managing exams & students.
-          </p>
-        </div>
-      </section>
-
-      <!-- ================= CTA SECTION ================= -->
-      <section class="max-w-7xl mx-auto my-16 px-6">
-        <div class="bg-indigo-600 text-center p-12 rounded-2xl">
-          <h3 class="text-3xl font-bold mb-4">Ready to start your journey?</h3>
-          <p class="text-indigo-100 mb-6">
-            Create your free account and start today.
-          </p>
-
-          <a
-            href="#"
-            class="bg-white text-indigo-600 px-8 py-3 rounded-lg font-bold hover:bg-gray-100 transition"
-          >
-            Create Account
-          </a>
-        </div>
-      </section>
-    </main>
-
-    <!-- ================= FOOTER ================= -->
-    <footer class="bg-gray-900 border-t border-gray-800 py-6">
-      <div class="text-center text-gray-500">
-        © 2025 Secure Exam Portal. All rights reserved.
       </div>
-    </footer>
-  </body>
-</html>
+    </div>
+    <div class="col-md-4">
+      <div class="feature-card card h-100">
+        <div class="card-body text-center">
+          <div class="feature-icon mb-3">
+            <i class="fas fa-mobile-alt fa-3x text-primary"></i>
+          </div>
+          <h5 class="card-title">Mobile Friendly</h5>
+          <p class="card-text">
+            Take exams from any device with our responsive and mobile-optimized
+            interface.
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Additional Features -->
+<div class="container mt-5">
+  <div class="row g-4">
+    <div class="col-md-6">
+      <div class="card h-100">
+        <div class="card-body">
+          <h5 class="card-title">For Students</h5>
+          <ul class="list-unstyled">
+            <li class="mb-2">
+              <i class="fas fa-check text-success me-2"></i> Easy exam
+              navigation
+            </li>
+            <li class="mb-2">
+              <i class="fas fa-check text-success me-2"></i> Instant result
+              feedback
+            </li>
+            <li class="mb-2">
+              <i class="fas fa-check text-success me-2"></i> Performance
+              tracking
+            </li>
+            <li class="mb-2">
+              <i class="fas fa-check text-success me-2"></i> Practice test
+              availability
+            </li>
+          </ul>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-6">
+      <div class="card h-100">
+        <div class="card-body">
+          <h5 class="card-title">For Administrators</h5>
+          <ul class="list-unstyled">
+            <li class="mb-2">
+              <i class="fas fa-check text-success me-2"></i> Easy exam creation
+            </li>
+            <li class="mb-2">
+              <i class="fas fa-check text-success me-2"></i> Automated grading
+              system
+            </li>
+            <li class="mb-2">
+              <i class="fas fa-check text-success me-2"></i> Detailed analytics
+              dashboard
+            </li>
+            <li class="mb-2">
+              <i class="fas fa-check text-success me-2"></i> User management
+              tools
+            </li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Call to Action -->
+<div class="container mt-5 mb-5">
+  <div class="cta-section text-center p-5 rounded">
+    <h3 class="mb-4">Ready to Get Started?</h3>
+    <p class="lead mb-4">
+      Join thousands of students and educators using our platform
+    </p>
+    {% if not current_user.is_authenticated %}
+    <a href="{{ url_for('auth.register') }}" class="btn btn-primary btn-lg">
+      Create Free Account
+    </a>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
