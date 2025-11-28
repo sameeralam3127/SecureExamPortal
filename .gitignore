@@ -66,3 +66,4 @@ __pypackages__/
 pip-wheel-metadata/
 
 
+/node_modules/
