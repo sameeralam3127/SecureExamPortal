@@ -1,31 +1,38 @@
-[tool.poetry]
+[project]
 name = "secure-exam-portal"
 version = "1.0.0"
 description = "A secure online exam portal built with Flask for MCA projects"
-authors = ["Sameer Alam <sameeralam@example.com>"]
+authors = [
+    { name = "Sameer Alam", email = "sameeralam3127@gmail.com" }
+]
 readme = "README.md"
-license = "MIT"
-homepage = "https://sameeralam3127.pythonanywhere.com/"
+license = { text = "MIT" }
+requires-python = ">=3.10"
 
-# Disable package installation as root if you don't intend to distribute it
-packages = [
-    { include = "app" }
+dependencies = [
+    "Flask==3.0.2",
+    "Flask-SQLAlchemy==3.1.1",
+    "Flask-Login==0.6.3",
+    "Flask-WTF==1.2.1",
+    "Werkzeug==3.0.6",
+    "python-dotenv==1.0.1",
+    "SQLAlchemy==2.0.41",
 ]
 
-[tool.poetry.dependencies]
-python = "^3.10"
-Flask = "3.0.2"
-Flask-SQLAlchemy = "3.1.1"
-Flask-Login = "0.6.3"
-Flask-WTF = "1.2.1"
-Werkzeug = "3.0.6"
-python-dotenv = "1.0.1"
-SQLAlchemy = "2.0.41"
+[tool.black]
+line-length = 88
+target-version = ["py311"]
 
-[tool.poetry.scripts]
-# Allows running your app with: poetry run start
-start = "run:main"
+[tool.ruff]
+line-length = 88
+target-version = "py311"
+select = ["E", "F", "W", "I", "UP"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+line-ending = "auto"
 
 [build-system]
-requires = ["poetry-core>=1.5.0"]
-build-backend = "poetry.core.masonry.api"
+requires = ["hatchling"]
+build-backend = "hatchling.build"
