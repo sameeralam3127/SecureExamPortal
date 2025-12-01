@@ -1,6 +1,7 @@
-from app import create_app, db
-from app.models import User, Exam, Question, ExamResult
 from datetime import datetime, timedelta
+
+from app import create_app, db
+from app.models import Exam, ExamResult, Question, User
 
 
 def create_sample_data():

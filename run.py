@@ -1,8 +1,9 @@
 # run.py
-from app import create_app, db
-import os
 import logging
+import os
 from logging.handlers import RotatingFileHandler
+
+from app import create_app, db
 
 
 def main():

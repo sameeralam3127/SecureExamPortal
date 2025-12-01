@@ -1,10 +1,12 @@
-from flask import render_template, request, flash, redirect, url_for
-from . import admin_bp
-from .. import db
-from ..models import Exam, ExamResult, User
-from .decorators import admin_required
 from datetime import datetime, timedelta
+
+from flask import flash, redirect, render_template, request, url_for
 from sqlalchemy.orm import joinedload
+
+from .. import db
+from ..models import Exam, ExamResult
+from . import admin_bp
+from .decorators import admin_required
 
 
 # -------------------------------

@@ -1,7 +1,8 @@
 from flask import render_template
+
+from ..models import Exam, ExamResult, User
 from . import admin_bp
 from .decorators import admin_required
-from ..models import Exam, User, ExamResult
 
 
 @admin_bp.route("/dashboard")

@@ -1,8 +1,9 @@
-from flask import render_template, request, redirect, url_for, flash
+from flask import flash, redirect, render_template, request, url_for
 from flask_login import current_user
-from . import admin_bp
+
 from .. import db
 from ..models import Exam
+from . import admin_bp
 from .decorators import admin_required
 
 

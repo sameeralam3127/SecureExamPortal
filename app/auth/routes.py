@@ -1,10 +1,9 @@
-import os
-from flask import Blueprint, render_template, request, redirect, url_for, flash, session
-from flask_login import login_user, logout_user, login_required, current_user
+from dotenv import load_dotenv
+from flask import Blueprint, flash, redirect, render_template, request, session, url_for
 from flask_dance.contrib.google import google
+from flask_login import current_user, login_required, login_user, logout_user
 from oauthlib.oauth2.rfc6749.errors import InvalidGrantError
 from sqlalchemy import or_
-from dotenv import load_dotenv
 
 from .. import db, login_manager
 from ..models import User

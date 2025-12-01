@@ -1,9 +1,11 @@
-from flask import render_template, request, redirect, url_for, flash
-from flask_login import current_user
-from . import admin_bp
-from .. import db
-from ..models import User, Exam, ExamResult
 from datetime import datetime
+
+from flask import flash, redirect, render_template, request, url_for
+from flask_login import current_user
+
+from .. import db
+from ..models import Exam, ExamResult, User
+from . import admin_bp
 from .decorators import admin_required
 
 

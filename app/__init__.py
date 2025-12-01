@@ -1,9 +1,10 @@
 import os
-from flask import Flask
-from flask_sqlalchemy import SQLAlchemy
-from flask_login import LoginManager
-from flask_dance.contrib.google import make_google_blueprint
+
 from dotenv import load_dotenv
+from flask import Flask
+from flask_dance.contrib.google import make_google_blueprint
+from flask_login import LoginManager
+from flask_sqlalchemy import SQLAlchemy
 
 # Load environment variables
 load_dotenv()
@@ -39,8 +40,8 @@ def create_app():
         return User.query.get(int(user_id))
 
     # --- Import Blueprints ---
-    from .auth.routes import auth_bp
     from .admin import admin_bp
+    from .auth.routes import auth_bp
     from .student.routes import student_bp
 
     # --- Register Blueprints ---

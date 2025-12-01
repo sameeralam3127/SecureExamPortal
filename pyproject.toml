@@ -28,7 +28,10 @@ target-version = ["py311"]
 [tool.ruff]
 line-length = 88
 target-version = "py311"
+
+[tool.ruff.lint]
 select = ["E", "F", "W", "I", "UP"]
+
 
 [tool.ruff.format]
 quote-style = "double"
