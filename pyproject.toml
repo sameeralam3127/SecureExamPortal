@@ -19,6 +19,7 @@ dependencies = [
     "SQLAlchemy==2.0.41",
     "ruff>=0.14.7",
     "black>=25.11.0",
+    "flask-dance>=7.1.0",
 ]
 
 [tool.black]
