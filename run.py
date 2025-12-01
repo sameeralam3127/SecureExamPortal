@@ -24,12 +24,7 @@ def main():
 
     app.logger.setLevel(logging.INFO)
     app.logger.info("App startup")
-
-    with app.app_context():
-        # Create database folder if not exists
-        if not os.path.exists("data"):
-            os.makedirs("data")
-        db.create_all()
+    
 
     # Try multiple ports if busy
     port = 5000
