@@ -5,6 +5,7 @@ from .. import db
 from ..models import Exam
 from .decorators import admin_required
 
+
 # -------------------------
 # View All Exams
 # -------------------------
@@ -28,7 +29,7 @@ def create_exam():
             duration=int(request.form.get("duration")),
             total_marks=int(request.form.get("total_marks")),
             passing_marks=int(request.form.get("passing_marks")),
-            created_by=current_user.id
+            created_by=current_user.id,
         )
         db.session.add(exam)
         db.session.commit()

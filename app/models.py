@@ -24,7 +24,7 @@ class User(UserMixin, db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     # Relationships
-    exams_taken = db.relationship('ExamResult', backref='student', lazy=True)
+    exams_taken = db.relationship("ExamResult", backref="student", lazy=True)
 
     # Password helpers
     def set_password(self, password):
@@ -44,22 +44,16 @@ class Exam(db.Model):
     duration = db.Column(db.Integer)
     total_marks = db.Column(db.Integer)
     passing_marks = db.Column(db.Integer)
-    created_by = db.Column(db.Integer, db.ForeignKey('user.id'))
+    created_by = db.Column(db.Integer, db.ForeignKey("user.id"))
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     is_active = db.Column(db.Boolean, default=True)
 
     # Relationships
     questions = db.relationship(
-        'Question',
-        backref='exam',
-        lazy=True,
-        cascade='all, delete-orphan'
+        "Question", backref="exam", lazy=True, cascade="all, delete-orphan"
     )
     results = db.relationship(
-        'ExamResult',
-        backref='exam',
-        lazy=True,
-        cascade='all, delete-orphan'
+        "ExamResult", backref="exam", lazy=True, cascade="all, delete-orphan"
     )
 
 
@@ -68,7 +62,7 @@ class Exam(db.Model):
 # ---------------------------
 class Question(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    exam_id = db.Column(db.Integer, db.ForeignKey('exam.id'), nullable=False)
+    exam_id = db.Column(db.Integer, db.ForeignKey("exam.id"), nullable=False)
     question_text = db.Column(db.Text, nullable=False)
     option_a = db.Column(db.String(200), nullable=False)
     option_b = db.Column(db.String(200), nullable=False)
@@ -84,10 +78,10 @@ class Question(db.Model):
 class ExamResult(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     exam_id = db.Column(
-        db.Integer, db.ForeignKey('exam.id', ondelete='CASCADE'), nullable=False
+        db.Integer, db.ForeignKey("exam.id", ondelete="CASCADE"), nullable=False
     )
     user_id = db.Column(
-        db.Integer, db.ForeignKey('user.id', ondelete='CASCADE'), nullable=False
+        db.Integer, db.ForeignKey("user.id", ondelete="CASCADE"), nullable=False
     )
     score = db.Column(db.Integer, default=0)
     total_marks = db.Column(db.Integer)
@@ -98,10 +92,7 @@ class ExamResult(db.Model):
 
     # Relationships
     answers = db.relationship(
-        'UserAnswer',
-        backref='result',
-        lazy=True,
-        cascade='all, delete-orphan'
+        "UserAnswer", backref="result", lazy=True, cascade="all, delete-orphan"
     )
 
 
@@ -111,13 +102,13 @@ class ExamResult(db.Model):
 class UserAnswer(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     result_id = db.Column(
-        db.Integer, db.ForeignKey('exam_result.id', ondelete='CASCADE'), nullable=False
+        db.Integer, db.ForeignKey("exam_result.id", ondelete="CASCADE"), nullable=False
     )
     question_id = db.Column(
-        db.Integer, db.ForeignKey('question.id', ondelete='CASCADE'), nullable=False
+        db.Integer, db.ForeignKey("question.id", ondelete="CASCADE"), nullable=False
     )
     selected_answer = db.Column(db.String(1))
     is_correct = db.Column(db.Boolean)
 
     # Relationship
-    question = db.relationship('Question', backref='user_answers')
+    question = db.relationship("Question", backref="user_answers")

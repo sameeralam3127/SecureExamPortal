@@ -5,6 +5,7 @@ from flask_login import current_user, login_required
 
 def admin_required(func):
     """Ensure only admins can access."""
+
     @wraps(func)
     @login_required
     def wrapper(*args, **kwargs):
@@ -12,4 +13,5 @@ def admin_required(func):
             flash("Access denied", "danger")
             return redirect(url_for("student.dashboard"))
         return func(*args, **kwargs)
+
     return wrapper

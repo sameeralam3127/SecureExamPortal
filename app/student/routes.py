@@ -4,16 +4,17 @@ from ..models import Exam, ExamResult, Question, UserAnswer
 from .. import db
 from datetime import datetime
 
-student_bp = Blueprint('student', __name__)
+student_bp = Blueprint("student", __name__)
+
 
 # -------------------------
 # Student Dashboard
 # -------------------------
-@student_bp.route('/dashboard')
+@student_bp.route("/dashboard")
 @login_required
 def dashboard():
     if current_user.is_admin:
-        return redirect(url_for('admin.dashboard'))
+        return redirect(url_for("admin.dashboard"))
 
     # All assigned exams
     assigned_results = ExamResult.query.filter_by(user_id=current_user.id).all()
@@ -26,56 +27,55 @@ def dashboard():
     available_exams = [res.exam for res in not_attempted_results]
 
     return render_template(
-        'student/dashboard.html',
+        "student/dashboard.html",
         available_exams=available_exams,
         past_exams=past_exams,
-        not_attempted_results=not_attempted_results
+        not_attempted_results=not_attempted_results,
     )
+
 
 # -------------------------
 # Start Exam
 # -------------------------
-@student_bp.route('/exam/<int:exam_id>/start', methods=['GET', 'POST'])
+@student_bp.route("/exam/<int:exam_id>/start", methods=["GET", "POST"])
 @login_required
 def start_exam(exam_id):
     exam = Exam.query.get_or_404(exam_id)
 
     # Check if exam is active
     if not exam.is_active:
-        flash('This exam is not available.', 'danger')
-        return redirect(url_for('student.dashboard'))
+        flash("This exam is not available.", "danger")
+        return redirect(url_for("student.dashboard"))
 
     # Block only if exam is already COMPLETED
     completed_result = ExamResult.query.filter_by(
-        exam_id=exam_id,
-        user_id=current_user.id,
-        completed=True
+        exam_id=exam_id, user_id=current_user.id, completed=True
     ).first()
     if completed_result:
-        flash('You have already taken this exam.', 'warning')
-        return redirect(url_for('student.dashboard'))
+        flash("You have already taken this exam.", "warning")
+        return redirect(url_for("student.dashboard"))
 
     # Look for an assigned (but not completed) exam
     assigned_result = ExamResult.query.filter_by(
-        exam_id=exam_id,
-        user_id=current_user.id,
-        completed=False
+        exam_id=exam_id, user_id=current_user.id, completed=False
     ).first()
 
-    if request.method == 'POST':
+    if request.method == "POST":
         score = 0
         answers = []
 
         for question in exam.questions:
-            selected_answer = request.form.get(f'question_{question.id}')
+            selected_answer = request.form.get(f"question_{question.id}")
             is_correct = selected_answer == question.correct_answer
             if is_correct:
                 score += question.marks
-            answers.append(UserAnswer(
-                question_id=question.id,
-                selected_answer=selected_answer,
-                is_correct=is_correct
-            ))
+            answers.append(
+                UserAnswer(
+                    question_id=question.id,
+                    selected_answer=selected_answer,
+                    is_correct=is_correct,
+                )
+            )
 
         if assigned_result:
             # Update assigned exam
@@ -95,32 +95,32 @@ def start_exam(exam_id):
                 end_time=datetime.utcnow(),
                 is_passed=score >= exam.passing_marks,
                 completed=True,
-                answers=answers
+                answers=answers,
             )
             db.session.add(new_result)
 
         db.session.commit()
-        flash('Exam submitted successfully!', 'success')
-        return redirect(url_for('student.dashboard'))
+        flash("Exam submitted successfully!", "success")
+        return redirect(url_for("student.dashboard"))
 
     # Render exam for GET request
-    return render_template('student/take_exam.html', exam=exam)
+    return render_template("student/take_exam.html", exam=exam)
 
 
 # -------------------------
 # View Exam Result
 # -------------------------
-@student_bp.route('/exam/result/<int:result_id>')
+@student_bp.route("/exam/result/<int:result_id>")
 @login_required
 def view_result(result_id):
     result = ExamResult.query.get_or_404(result_id)
 
     if result.user_id != current_user.id and not current_user.is_admin:
-        flash('Access denied', 'danger')
-        return redirect(url_for('student.dashboard'))
+        flash("Access denied", "danger")
+        return redirect(url_for("student.dashboard"))
 
     # Attach questions to answers
     for answer in result.answers:
         answer.question = Question.query.get(answer.question_id)
 
-    return render_template('student/view_result.html', result=result)
+    return render_template("student/view_result.html", result=result)

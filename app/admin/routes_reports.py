@@ -6,6 +6,7 @@ from .decorators import admin_required
 from datetime import datetime, timedelta
 from sqlalchemy.orm import joinedload
 
+
 # -------------------------------
 # Admin Reports Route
 # -------------------------------
@@ -20,8 +21,7 @@ def reports():
 
     # Base query with eager loading for relationships
     query = ExamResult.query.options(
-        joinedload(ExamResult.student),
-        joinedload(ExamResult.exam)
+        joinedload(ExamResult.student), joinedload(ExamResult.exam)
     ).order_by(ExamResult.start_time.desc())
 
     # Apply exam filter
@@ -60,7 +60,11 @@ def reports():
     passed = sum(1 for r in results if r.is_passed)
     pass_rate = round((passed / total) * 100, 1) if total else 0
 
-    valid_scores = [r.score / r.total_marks * 100 for r in results if r.total_marks and r.total_marks > 0]
+    valid_scores = [
+        r.score / r.total_marks * 100
+        for r in results
+        if r.total_marks and r.total_marks > 0
+    ]
     avg_score = round(sum(valid_scores) / len(valid_scores), 1) if valid_scores else 0
 
     unique_students = len(set(r.user_id for r in results))
@@ -87,6 +91,7 @@ def reports():
             "status": status,
         },
     )
+
 
 # -------------------------------
 # Delete an Exam Result

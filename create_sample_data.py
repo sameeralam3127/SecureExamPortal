@@ -2,16 +2,17 @@ from app import create_app, db
 from app.models import User, Exam, Question, ExamResult
 from datetime import datetime, timedelta
 
+
 def create_sample_data():
     app = create_app()
     with app.app_context():
         print("Creating sample data...")
 
         # --- Admin user ---
-        admin = User.query.filter_by(username='admin').first()
+        admin = User.query.filter_by(username="admin").first()
         if not admin:
-            admin = User(username='admin', email='admin@example.com', is_admin=True)
-            admin.set_password('admin123')
+            admin = User(username="admin", email="admin@example.com", is_admin=True)
+            admin.set_password("admin123")
             db.session.add(admin)
             db.session.commit()
             print("Admin user created")
@@ -28,7 +29,7 @@ def create_sample_data():
                 total_marks=100,
                 passing_marks=60,
                 created_by=admin.id,
-                is_active=True
+                is_active=True,
             )
             db.session.add(exam)
             db.session.commit()
@@ -44,7 +45,7 @@ def create_sample_data():
                     option_c="O(n)",
                     option_d="O(n^2)",
                     correct_answer="B",
-                    marks=10
+                    marks=10,
                 ),
                 Question(
                     exam_id=exam.id,
@@ -54,8 +55,8 @@ def create_sample_data():
                     option_c="Tree",
                     option_d="Graph",
                     correct_answer="B",
-                    marks=10
-                )
+                    marks=10,
+                ),
             ]
             db.session.add_all(questions)
             db.session.commit()
@@ -69,8 +70,10 @@ def create_sample_data():
             username = f"student{i}"
             student = User.query.filter_by(username=username).first()
             if not student:
-                student = User(username=username, email=f"{username}@example.com", is_admin=False)
-                student.set_password('student123')
+                student = User(
+                    username=username, email=f"{username}@example.com", is_admin=False
+                )
+                student.set_password("student123")
                 students.append(student)
                 print(f"Created student: {username}")
 
@@ -93,7 +96,7 @@ def create_sample_data():
                     total_marks=100,
                     start_time=current_time - timedelta(days=1),
                     end_time=current_time - timedelta(days=1, minutes=45),
-                    is_passed=True
+                    is_passed=True,
                 )
                 db.session.add(result)
 
@@ -106,7 +109,7 @@ def create_sample_data():
                     total_marks=100,
                     start_time=current_time - timedelta(hours=2),
                     end_time=current_time - timedelta(hours=1),
-                    is_passed=False
+                    is_passed=False,
                 )
                 db.session.add(result)
 
@@ -120,6 +123,7 @@ def create_sample_data():
         print(f"Total Questions: {Question.query.count()}")
         print(f"Total Exam Results: {ExamResult.query.count()}")
         print("--------------------")
+
 
 if __name__ == "__main__":
     create_sample_data()

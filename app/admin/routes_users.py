@@ -6,6 +6,7 @@ from ..models import User, Exam, ExamResult
 from datetime import datetime
 from .decorators import admin_required
 
+
 # -------------------------
 # Manage Users
 # -------------------------
@@ -76,12 +77,16 @@ def assign_exam(user_id):
         exam_id = request.form.get("exam_id")
         exam = Exam.query.get_or_404(exam_id)
 
-        existing = ExamResult.query.filter_by(user_id=user.id, exam_id=exam.id, completed=True).first()
+        existing = ExamResult.query.filter_by(
+            user_id=user.id, exam_id=exam.id, completed=True
+        ).first()
         if existing:
             flash(f"{user.username} has already completed {exam.title}.", "warning")
             return redirect(url_for("admin.assign_exam", user_id=user.id))
 
-        assigned = ExamResult.query.filter_by(user_id=user.id, exam_id=exam.id, completed=False).first()
+        assigned = ExamResult.query.filter_by(
+            user_id=user.id, exam_id=exam.id, completed=False
+        ).first()
         if assigned:
             flash(f"{user.username} has already been assigned {exam.title}.", "info")
             return redirect(url_for("admin.assign_exam", user_id=user.id))
@@ -93,14 +98,16 @@ def assign_exam(user_id):
             total_marks=exam.total_marks,
             is_passed=False,
             completed=False,
-            start_time=datetime.utcnow()
+            start_time=datetime.utcnow(),
         )
         db.session.add(exam_result)
         db.session.commit()
         flash(f"Exam '{exam.title}' assigned to {user.username}.", "success")
         return redirect(url_for("admin.assign_exam", user_id=user.id))
 
-    return render_template("admin/assign_exam.html", user=user, exams=exams, taken_exams=taken_exams)
+    return render_template(
+        "admin/assign_exam.html", user=user, exams=exams, taken_exams=taken_exams
+    )
 
 
 # -------------------------

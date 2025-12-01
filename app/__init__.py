@@ -14,21 +14,21 @@ login_manager = LoginManager()
 
 def create_app():
     app = Flask(__name__)
-    app.config['SECRET_KEY'] = os.getenv('FLASK_SECRET_KEY', os.urandom(24))
+    app.config["SECRET_KEY"] = os.getenv("FLASK_SECRET_KEY", os.urandom(24))
 
     # --- Ensure database folder exists ---
     BASE_DIR = os.path.abspath(os.path.dirname(__file__))
-    DATA_DIR = os.path.join(BASE_DIR, '..', 'data')
+    DATA_DIR = os.path.join(BASE_DIR, "..", "data")
     os.makedirs(DATA_DIR, exist_ok=True)
 
-    db_path = os.path.join(DATA_DIR, 'exam_portal.db')
-    app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{db_path}'
-    app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+    db_path = os.path.join(DATA_DIR, "exam_portal.db")
+    app.config["SQLALCHEMY_DATABASE_URI"] = f"sqlite:///{db_path}"
+    app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
     # --- Initialize extensions ---
     db.init_app(app)
     login_manager.init_app(app)
-    login_manager.login_view = 'auth.login'
+    login_manager.login_view = "auth.login"
 
     # --- Import models ---
     from . import models
@@ -45,8 +45,8 @@ def create_app():
 
     # --- Register Blueprints ---
     app.register_blueprint(auth_bp)
-    app.register_blueprint(admin_bp, url_prefix='/admin')
-    app.register_blueprint(student_bp, url_prefix='/student')
+    app.register_blueprint(admin_bp, url_prefix="/admin")
+    app.register_blueprint(student_bp, url_prefix="/student")
 
     # --- Google OAuth Setup ---
     os.environ["OAUTHLIB_INSECURE_TRANSPORT"] = "1"  # Only for local testing

@@ -1,11 +1,6 @@
 import os
-from flask import (
-    Blueprint, render_template, request, redirect,
-    url_for, flash, session
-)
-from flask_login import (
-    login_user, logout_user, login_required, current_user
-)
+from flask import Blueprint, render_template, request, redirect, url_for, flash, session
+from flask_login import login_user, logout_user, login_required, current_user
 from flask_dance.contrib.google import google
 from oauthlib.oauth2.rfc6749.errors import InvalidGrantError
 from sqlalchemy import or_
@@ -19,6 +14,7 @@ from ..models import User
 # -------------------------------
 auth_bp = Blueprint("auth", __name__)
 load_dotenv()
+
 
 # -------------------------------
 # Flask-Login Integration
@@ -55,7 +51,9 @@ def register():
             return redirect(url_for("auth.register"))
 
         # Check existing username or email
-        if User.query.filter(or_(User.username == username, User.email == email)).first():
+        if User.query.filter(
+            or_(User.username == username, User.email == email)
+        ).first():
             flash("Username or email already exists.", "danger")
             return redirect(url_for("auth.register"))
 
@@ -84,7 +82,11 @@ def login():
         if user and user.check_password(password):
             login_user(user)
             flash(f"Welcome, {user.username}!", "success")
-            return redirect(url_for("admin.dashboard") if user.is_admin else url_for("student.dashboard"))
+            return redirect(
+                url_for("admin.dashboard")
+                if user.is_admin
+                else url_for("student.dashboard")
+            )
 
         flash("Invalid username or password.", "danger")
 
