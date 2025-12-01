@@ -12,7 +12,6 @@ from ..models import User
 # Setup
 # -------------------------------
 auth_bp = Blueprint("auth", __name__)
-load_dotenv()
 
 
 # -------------------------------
