@@ -15,14 +15,6 @@ auth_bp = Blueprint("auth", __name__)
 
 
 # -------------------------------
-# Flask-Login Integration
-# -------------------------------
-@login_manager.user_loader
-def load_user(user_id):
-    return User.query.get(int(user_id))
-
-
-# -------------------------------
 # Index Route
 # -------------------------------
 @auth_bp.route("/")
