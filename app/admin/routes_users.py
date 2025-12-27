@@ -7,6 +7,7 @@ from .. import db
 from ..models import Exam, ExamResult, User
 from . import admin_bp
 from .decorators import admin_required
+from ..utils.email import send_exam_assigned_email
 
 
 # -------------------------
@@ -35,7 +36,6 @@ def admin_users():
         flash("User created successfully!", "success")
         return redirect(url_for("admin.admin_users"))
 
-    # Show all users (students + admins) for privilege management
     users = User.query.order_by(User.created_at.desc()).all()
     return render_template("admin/users.html", users=users)
 
@@ -54,7 +54,6 @@ def edit_user(user_id):
         if request.form.get("password"):
             user.set_password(request.form.get("password"))
 
-        # Allow admins to update privileges, but prevent self-demotion
         if current_user.is_admin and user.id != current_user.id:
             user.is_admin = "is_admin" in request.form
 
@@ -104,6 +103,10 @@ def assign_exam(user_id):
         )
         db.session.add(exam_result)
         db.session.commit()
+
+        # ✅ EMAIL TRIGGER — ONLY ON SUCCESSFUL ASSIGNMENT
+        send_exam_assigned_email(user, exam)
+
         flash(f"Exam '{exam.title}' assigned to {user.username}.", "success")
         return redirect(url_for("admin.assign_exam", user_id=user.id))
 
