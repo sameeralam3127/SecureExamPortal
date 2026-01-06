@@ -5,7 +5,7 @@ It supports both **local login** (username/password) and **Google Account login*
 
 The system provides role-based dashboards for **Admins** and **Students**, ensuring seamless exam management and participation.
 
-**Live Demo:** [https://sameeralam3127.pythonanywhere.com/](https://sameeralam3127.pythonanywhere.com/)
+**Live Prototype Demo:** [https://sameeralam3127.pythonanywhere.com/](https://sameeralam3127.pythonanywhere.com/)
 
 See the [Screenshots & Architecture](SCREENSHOT.md) for more details.
 
