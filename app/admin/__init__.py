@@ -13,6 +13,7 @@ from . import (
     routes_questions,
     routes_reports,
     routes_users,
+    routes_live_dashboard,
 )
 
 
