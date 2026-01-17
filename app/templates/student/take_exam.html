@@ -1,128 +1,102 @@
-{% extends "base.html" %}
-
-{% block title %}{{ exam.title }} - Online Exam Portal{% endblock %}
-
-{% block content %}
+{% extends "base.html" %} {% block title %}{{ exam.title }} - Online Exam
+Portal{% endblock %} {% block content %}
 <div class="container">
-    <div class="row">
-        <div class="col-md-8 offset-md-2">
-            <div class="card">
-                <div class="card-header d-flex justify-content-between align-items-center">
-                    <h4 class="mb-0">{{ exam.title }}</h4>
-                    <div class="timer bg-danger text-white px-3 py-2 rounded">
-                        Time Remaining: <span id="time">00:00:00</span>
-                    </div>
-                </div>
-                <div class="card-body">
-                    <!-- Progress Bar -->
-                    <div class="progress mb-4">
-                        <div id="progressBar" class="progress-bar" role="progressbar" style="width: 0%"></div>
-                    </div>
-                    
-                    <form method="POST" id="examForm">
-                        {% for question in exam.questions %}
-                        <div class="question mb-4" id="question-{{ loop.index }}">
-                            <h5>Question {{ loop.index }} ({{ question.marks }} marks)</h5>
-                            <p class="mb-3">{{ question.question_text }}</p>
-                            <div class="options">
-                                <div class="form-check mb-2">
-                                    <input class="form-check-input" type="radio" name="question_{{ question.id }}" 
-                                           id="q{{ question.id }}_a" value="A" required>
-                                    <label class="form-check-label" for="q{{ question.id }}_a">
-                                        A) {{ question.option_a }}
-                                    </label>
-                                </div>
-                                <div class="form-check mb-2">
-                                    <input class="form-check-input" type="radio" name="question_{{ question.id }}" 
-                                           id="q{{ question.id }}_b" value="B">
-                                    <label class="form-check-label" for="q{{ question.id }}_b">
-                                        B) {{ question.option_b }}
-                                    </label>
-                                </div>
-                                <div class="form-check mb-2">
-                                    <input class="form-check-input" type="radio" name="question_{{ question.id }}" 
-                                           id="q{{ question.id }}_c" value="C">
-                                    <label class="form-check-label" for="q{{ question.id }}_c">
-                                        C) {{ question.option_c }}
-                                    </label>
-                                </div>
-                                <div class="form-check mb-2">
-                                    <input class="form-check-input" type="radio" name="question_{{ question.id }}" 
-                                           id="q{{ question.id }}_d" value="D">
-                                    <label class="form-check-label" for="q{{ question.id }}_d">
-                                        D) {{ question.option_d }}
-                                    </label>
-                                </div>
-                            </div>
-                        </div>
-                        {% endfor %}
-                        
-                        <div class="text-center mt-4">
-                            <button type="submit" class="btn btn-primary btn-lg">Submit Exam</button>
-                        </div>
-                    </form>
-                </div>
-            </div>
+  <div class="row">
+    <div class="col-md-8 offset-md-2">
+      <div class="card">
+        <div
+          class="card-header d-flex justify-content-between align-items-center"
+        >
+          <h4 class="mb-0">{{ exam.title }}</h4>
+          <div class="timer bg-danger text-white px-3 py-2 rounded">
+            Time Remaining: <span id="time">00:00:00</span>
+          </div>
         </div>
-    </div>
-</div>
 
-{% block scripts %}
+        <div class="card-body">
+          <div class="progress mb-4">
+            <div id="progressBar" class="progress-bar" style="width: 0%"></div>
+          </div>
+
+          <form method="POST" id="examForm">
+            {% for question in questions %}
+            <div class="question mb-4" id="question-{{ question.id }}">
+              <h5>Question {{ loop.index }} ({{ question.marks }} marks)</h5>
+              <p>{{ question.question_text }}</p>
+
+              {% set order = option_order[question.id] %} {% for opt in order %}
+              <div class="form-check mb-2">
+                <input
+                  class="form-check-input"
+                  type="radio"
+                  name="question_{{ question.id }}"
+                  value="{{ opt }}"
+                  required
+                />
+                <label class="form-check-label">
+                  {{ opt }}) {{ attribute(question, 'option_' + opt|lower) }}
+                </label>
+              </div>
+              {% endfor %}
+            </div>
+            {% endfor %}
+
+            <div class="text-center mt-4">
+              <button type="submit" class="btn btn-primary btn-lg">
+                Submit Exam
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %} {% block scripts %}
 <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        // Initialize timer
-        const examDuration = {{ exam.duration }} * 60; // Convert minutes to seconds
-        let timeRemaining = examDuration;
-        const totalQuestions = {{ exam.questions|length }};
-        let answeredQuestions = 0;
-        
-        // Update progress bar
-        function updateProgress() {
-            const progress = (answeredQuestions / totalQuestions) * 100;
-            document.getElementById('progressBar').style.width = progress + '%';
-            document.getElementById('progressBar').setAttribute('aria-valuenow', progress);
+  document.addEventListener('DOMContentLoaded', function () {
+
+    let timeRemaining = {{ remaining_seconds }};
+
+    function updateTimer() {
+      const h = Math.floor(timeRemaining / 3600);
+      const m = Math.floor((timeRemaining % 3600) / 60);
+      const s = timeRemaining % 60;
+
+      document.getElementById('time').textContent =
+        `${h.toString().padStart(2,'0')}:` +
+        `${m.toString().padStart(2,'0')}:` +
+        `${s.toString().padStart(2,'0')}`;
+
+      if (timeRemaining <= 0) {
+        document.getElementById('examForm').submit();
+      } else {
+        timeRemaining--;
+        setTimeout(updateTimer, 1000);
+      }
+    }
+
+    updateTimer();
+
+    const total = {{ questions|length }};
+    let answered = 0;
+
+    document.querySelectorAll('input[type="radio"]').forEach(radio => {
+      radio.addEventListener('change', function () {
+        const qid = this.name.split('_')[1];
+        const div = document.getElementById('question-' + qid);
+        if (!div.classList.contains('answered')) {
+          div.classList.add('answered');
+          answered++;
+          document.getElementById('progressBar').style.width =
+            ((answered / total) * 100) + '%';
         }
-        
-        // Track answered questions
-        document.querySelectorAll('input[type="radio"]').forEach(function(radio) {
-            radio.addEventListener('change', function() {
-                const questionId = this.name.split('_')[1];
-                const questionDiv = document.getElementById('question-' + questionId);
-                
-                // Check if this is the first answer for this question
-                if (!questionDiv.classList.contains('answered')) {
-                    answeredQuestions++;
-                    questionDiv.classList.add('answered');
-                    updateProgress();
-                }
-            });
-        });
-        
-        // Update timer
-        function updateTimer() {
-            const hours = Math.floor(timeRemaining / 3600);
-            const minutes = Math.floor((timeRemaining % 3600) / 60);
-            const seconds = timeRemaining % 60;
-            
-            document.getElementById('time').textContent = 
-                `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-            
-            if (timeRemaining <= 0) {
-                document.getElementById('examForm').submit();
-            } else {
-                timeRemaining--;
-                setTimeout(updateTimer, 1000);
-            }
-        }
-        
-        // Start the timer
-        updateTimer();
-        
-        // Prevent accidental navigation
-        window.onbeforeunload = function() {
-            return "Are you sure you want to leave? Your progress will be lost.";
-        };
+      });
     });
+
+    window.onbeforeunload = function () {
+      return "Are you sure you want to leave? Your progress will be lost.";
+    };
+  });
 </script>
 {% endblock %}
-{% endblock %} 
