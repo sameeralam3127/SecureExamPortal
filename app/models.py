@@ -84,7 +84,7 @@ class ExamResult(db.Model):
 
     score = db.Column(db.Integer, default=0)
     total_marks = db.Column(db.Integer)
-    start_time = db.Column(db.DateTime, default=datetime.utcnow)
+    start_time = db.Column(db.DateTime, nullable=True)
     end_time = db.Column(db.DateTime)
     is_passed = db.Column(db.Boolean, default=False)
     completed = db.Column(db.Boolean, default=False)
