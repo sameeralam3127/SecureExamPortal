@@ -10,7 +10,6 @@ def create_sample_data():
     with app.app_context():
         print("Creating sample data...")
 
-        # ✅ ENSURE TABLES EXIST
         db.create_all()
 
         # -------------------------
@@ -122,7 +121,7 @@ def create_sample_data():
                         start_time=current_time - timedelta(days=1),
                         end_time=current_time - timedelta(days=1, minutes=45),
                         is_passed=True,
-                        completed=True,   # ✅ IMPORTANT
+                        completed=True,   
                     )
                 )
 
@@ -141,7 +140,7 @@ def create_sample_data():
                         start_time=current_time - timedelta(hours=2),
                         end_time=current_time - timedelta(hours=1),
                         is_passed=False,
-                        completed=True,   # ✅ IMPORTANT
+                        completed=True,   
                     )
                 )
 
