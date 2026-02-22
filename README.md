@@ -96,36 +96,24 @@ SecureExamPortal/
 
 ### Tech Stack
 
-Backend:
-
-- Flask
-- Flask-SQLAlchemy
-- Flask-Login
-- Flask-Dance (Google OAuth)
-- Flask-Migrate
-- Flask-CORS
-- Gunicorn
-
-Database:
-
-- PostgreSQL (Primary)
-- SQLite (Development fallback)
-
-Containerization:
-
-- Docker
-- Docker Compose
-
-Security:
-
-- Password hashing (Werkzeug)
-- Role-based access control
-- Environment-based secrets
-- OAuth 2.0 integration
-
-Frontend:
-
-- Bootstrap 5
+| Category             | Technology / Tools            |
+| -------------------- | ----------------------------- |
+| **Backend**          | Flask                         |
+|                      | Flask-SQLAlchemy              |
+|                      | Flask-Login                   |
+|                      | Flask-Dance (Google OAuth)    |
+|                      | Flask-Migrate                 |
+|                      | Flask-CORS                    |
+|                      | Gunicorn                      |
+| **Database**         | PostgreSQL (Primary)          |
+|                      | SQLite (Development fallback) |
+| **Containerization** | Docker                        |
+|                      | Docker Compose                |
+| **Security**         | Password Hashing (Werkzeug)   |
+|                      | Role-Based Access Control     |
+|                      | Environment-Based Secrets     |
+|                      | OAuth 2.0 Integration         |
+| **Frontend**         | Bootstrap 5                   |
 
 ---
 
