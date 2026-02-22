@@ -1,36 +1,28 @@
-# Use an official Python 3.10 slim image
-FROM python:3.10-slim
+# Use slim Python image
+FROM python:3.11-slim
 
-# Set environment variables
+# Prevent Python from writing pyc files
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 
 # Set working directory
 WORKDIR /app
 
-# Install system dependencies
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    build-essential \
-    curl \
-    git \
-    && rm -rf /var/lib/apt/lists/*
+# Install system dependencies (if needed)
+RUN apt-get update && apt-get install -y build-essential
 
-# Install Poetry
-RUN curl -sSL https://install.python-poetry.org | python3 -
-ENV PATH="/root/.local/bin:$PATH"
+# Copy requirements first (better caching)
+COPY requirements.txt .
 
-# Copy pyproject.toml and poetry.lock first for caching
-COPY pyproject.toml poetry.lock* /app/
+# Install Python dependencies
+RUN pip install --upgrade pip
+RUN pip install -r requirements.txt
 
-# Install dependencies (without installing the project itself)
-RUN poetry config virtualenvs.create false \
-    && poetry install --no-interaction --no-ansi --no-root
+# Copy project files
+COPY . .
 
-# Copy the rest of the application code
-COPY . /app/
-
-# Expose the Flask port
+# Expose Flask port
 EXPOSE 5000
 
-# Default command to run the app
-CMD ["poetry", "run", "start"]
+# Use Gunicorn for production
+CMD ["gunicorn", "-w", "4", "-b", "0.0.0.0:5000", "wsgi:app"]
