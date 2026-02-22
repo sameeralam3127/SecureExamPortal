@@ -13,7 +13,7 @@ SecureExamPortal is evolving from an academic MCA project into a production-read
 
 ---
 
-## Live Demo (Legacy Version)
+### Live Demo (Legacy Version)
 
 [https://sameeralam3127.pythonanywhere.com/](https://sameeralam3127.pythonanywhere.com/)
 
@@ -22,9 +22,7 @@ SecureExamPortal is evolving from an academic MCA project into a production-read
 
 ---
 
-# Architecture Overview
-
-## High-Level Architecture
+### Architecture Overview (High-Level Architecture)
 
 ```
 Client (Browser / API Consumer)
@@ -38,9 +36,7 @@ PostgreSQL Database
 
 ---
 
-# Features
-
-## Admin Capabilities
+### Features (Admin Capabilities)
 
 - Dashboard analytics
 - User management (CRUD)
@@ -48,7 +44,7 @@ PostgreSQL Database
 - Result tracking and reporting
 - Role-based access enforcement
 
-## Student Capabilities
+### Student Capabilities
 
 - Exam dashboard
 - Timed examinations
@@ -58,7 +54,7 @@ PostgreSQL Database
 
 ---
 
-# Enterprise Enhancements (New Architecture)
+### Enterprise Enhancements (New Architecture)
 
 - Modular application structure
 - PostgreSQL support (production-ready)
@@ -73,7 +69,7 @@ PostgreSQL Database
 
 ---
 
-# Project Structure
+### Project Structure
 
 ```
 SecureExamPortal/
@@ -98,7 +94,7 @@ SecureExamPortal/
 
 ---
 
-# Tech Stack
+### Tech Stack
 
 Backend:
 
@@ -133,9 +129,7 @@ Frontend:
 
 ---
 
-# Setup (Development Mode)
-
-## 1. Clone Repository
+### Setup (Development Mode) Clone Repository
 
 ```bash
 git clone https://github.com/sameeralam3127/SecureExamPortal.git
@@ -144,7 +138,7 @@ cd SecureExamPortal
 
 ---
 
-## 2. Create Virtual Environment
+### Create Virtual Environment
 
 ```bash
 python -m venv venv
@@ -154,7 +148,7 @@ pip install -r requirements.txt
 
 ---
 
-## 3. Configure Environment Variables
+### Configure Environment Variables
 
 Create `.env` in project root:
 
@@ -168,7 +162,7 @@ GOOGLE_CLIENT_SECRET=your_google_client_secret
 
 ---
 
-## 4. Run Application (Dev)
+###Run Application (Dev)
 
 ```bash
 python run.py
@@ -176,30 +170,7 @@ python run.py
 
 ---
 
-# Docker Deployment (Recommended)
-
-## 1. Build & Run
-
-```bash
-docker compose up --build
-```
-
-Services:
-
-- `web` (Flask + Gunicorn)
-- `db` (PostgreSQL)
-
----
-
-## 2. Apply Database Migrations
-
-```bash
-docker exec -it secure_exam_app flask db upgrade
-```
-
----
-
-# API (Planned / In Progress)
+### API (Planned / In Progress)
 
 Versioned API endpoints:
 
@@ -219,7 +190,7 @@ Future: JWT-based authentication.
 
 ---
 
-# Default Credentials (Dev Only)
+### Default Credentials (Dev Only)
 
 Admin:
 
@@ -235,7 +206,7 @@ student1 / student123
 
 ---
 
-# Security Considerations
+### Security Considerations
 
 - Never commit `.env`
 - Use strong SECRET_KEY
@@ -245,7 +216,7 @@ student1 / student123
 
 ---
 
-# Development Roadmap
+### Development Roadmap
 
 - JWT authentication for APIs
 - Rate limiting
@@ -256,26 +227,7 @@ student1 / student123
 
 ---
 
-# Contributing
-
-Pull requests are welcome.
-
-Before submitting:
-
-- Create feature branch
-- Follow commit conventions
-- Ensure tests pass
-
----
-
-# License
-
-MIT License
-See `LICENSE` for details.
-
----
-
-# Maintainer
+### Maintainer
 
 Sameer Alam
 Backend Developer | Python | Flask | System Design
