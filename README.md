@@ -94,29 +94,6 @@ SecureExamPortal/
 
 ---
 
-### Tech Stack
-
-| Category             | Technology / Tools            |
-| -------------------- | ----------------------------- |
-| **Backend**          | Flask                         |
-|                      | Flask-SQLAlchemy              |
-|                      | Flask-Login                   |
-|                      | Flask-Dance (Google OAuth)    |
-|                      | Flask-Migrate                 |
-|                      | Flask-CORS                    |
-|                      | Gunicorn                      |
-| **Database**         | PostgreSQL (Primary)          |
-|                      | SQLite (Development fallback) |
-| **Containerization** | Docker                        |
-|                      | Docker Compose                |
-| **Security**         | Password Hashing (Werkzeug)   |
-|                      | Role-Based Access Control     |
-|                      | Environment-Based Secrets     |
-|                      | OAuth 2.0 Integration         |
-| **Frontend**         | Bootstrap 5                   |
-
----
-
 ### Setup (Development Mode) Clone Repository
 
 ```bash
@@ -126,17 +103,7 @@ cd SecureExamPortal
 
 ---
 
-### Create Virtual Environment
-
-```bash
-python -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt
-```
-
----
-
-### Configure Environment Variables
+### Create Virtual Environment and Configure Environment Variables
 
 Create `.env` in project root:
 
@@ -150,7 +117,7 @@ GOOGLE_CLIENT_SECRET=your_google_client_secret
 
 ---
 
-###Run Application (Dev)
+### Run Application (Dev)
 
 ```bash
 python run.py
@@ -194,30 +161,7 @@ student1 / student123
 
 ---
 
-### Security Considerations
-
-- Never commit `.env`
-- Use strong SECRET_KEY
-- Enforce HTTPS in production
-- Disable OAUTHLIB_INSECURE_TRANSPORT outside development
-- Use PostgreSQL in production
-
----
-
-### Development Roadmap
-
-- JWT authentication for APIs
-- Rate limiting
-- Nginx reverse proxy
-- CI/CD pipeline
-- Test coverage > 80%
-- Cloud deployment (AWS / Render)
-
----
-
 ### Maintainer
 
 Sameer Alam
 Backend Developer | Python | Flask | System Design
-
----
