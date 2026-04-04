@@ -1,11 +1,27 @@
-from flask import Blueprint, jsonify
+from fastapi import APIRouter
+from sqlalchemy import text
 
-core_bp = Blueprint("core", __name__)
+from app.config.base import get_settings
+from app.extensions.db import SessionLocal
+from app.schemas.core import HealthResponse
 
-@core_bp.route("/health", methods=["GET"])
-def health():
-    return jsonify({
-        "status": "OK",
-        "service": "SecureExamPortal API",
-        "version": "v1"
-    }), 200
+router = APIRouter(tags=["core"])
+
+
+@router.get("/health", response_model=HealthResponse)
+def health() -> HealthResponse:
+    settings = get_settings()
+    database_status = "connected"
+
+    try:
+        with SessionLocal() as db:
+            db.execute(text("SELECT 1"))
+    except Exception:
+        database_status = "unavailable"
+
+    return HealthResponse(
+        status="OK",
+        service=settings.app_name,
+        version=settings.app_version,
+        database=database_status,
+    )
