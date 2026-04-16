@@ -9,6 +9,8 @@ from app.models.exam import AttemptAnswer, AttemptStatus, Exam, ExamAssignment, 
 from app.models.user import User
 from app.modules.auth.dependencies import require_student
 from app.schemas.exam import (
+    AnswerState,
+    AnswerSubmit,
     AssignmentStatusRead,
     AttemptResult,
     AttemptSubmitRequest,
@@ -98,7 +100,7 @@ def start_exam(
         .where(ExamAssignment.id == assignment_id, ExamAssignment.student_id == current_user.id)
         .options(
             selectinload(ExamAssignment.exam).selectinload(Exam.questions),
-            selectinload(ExamAssignment.attempts),
+            selectinload(ExamAssignment.attempts).selectinload(ExamAttempt.answers),
         )
     )
 
@@ -126,6 +128,20 @@ def start_exam(
         db.commit()
         db.refresh(attempt)
 
+    saved_answers = [
+        AnswerState(question_id=answer.question_id, selected_option=answer.selected_option)
+        for answer in sorted(attempt.answers, key=lambda item: item.question_id)
+    ]
+    answered_question_ids = {answer.question_id for answer in attempt.answers}
+    next_unanswered_index = next(
+        (
+            index
+            for index, question in enumerate(assignment.exam.questions)
+            if question.id not in answered_question_ids
+        ),
+        0,
+    )
+
     return ExamStartResponse(
         attempt_id=attempt.id,
         assignment_id=assignment.id,
@@ -134,8 +150,69 @@ def start_exam(
         description=assignment.exam.description,
         duration_minutes=assignment.exam.duration_minutes,
         started_at=attempt.started_at,
+        question_count=len(assignment.exam.questions),
+        current_question_index=next_unanswered_index,
+        saved_answers=saved_answers,
         questions=[QuestionRead.model_validate(question) for question in assignment.exam.questions],
     )
+
+
+@router.put("/attempts/{attempt_id}/answers", response_model=list[AnswerState])
+def autosave_answers(
+    attempt_id: int,
+    payload: AttemptSubmitRequest,
+    current_user: User = Depends(require_student),
+    db: Session = Depends(get_db),
+) -> list[AnswerState]:
+    attempt = db.scalar(
+        select(ExamAttempt)
+        .where(ExamAttempt.id == attempt_id, ExamAttempt.student_id == current_user.id)
+        .options(
+            selectinload(ExamAttempt.assignment)
+            .selectinload(ExamAssignment.exam)
+            .selectinload(Exam.questions),
+            selectinload(ExamAttempt.answers),
+        )
+    )
+    if attempt is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Attempt not found")
+    if attempt.status == AttemptStatus.submitted:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Attempt already submitted")
+
+    valid_question_ids = {question.id for question in attempt.assignment.exam.questions}
+    incoming_answers = {answer.question_id: answer.selected_option for answer in payload.answers}
+    if not set(incoming_answers).issubset(valid_question_ids):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="One or more answers do not belong to this exam",
+        )
+
+    existing_answers = {answer.question_id: answer for answer in attempt.answers}
+    for question_id, selected_option in incoming_answers.items():
+        existing_answer = existing_answers.get(question_id)
+        if existing_answer:
+            existing_answer.selected_option = selected_option
+        else:
+            db.add(
+                AttemptAnswer(
+                    attempt_id=attempt.id,
+                    question_id=question_id,
+                    selected_option=selected_option,
+                    is_correct=False,
+                    marks_awarded=0,
+                )
+            )
+
+    db.commit()
+    refreshed_attempt = db.scalar(
+        select(ExamAttempt)
+        .where(ExamAttempt.id == attempt.id)
+        .options(selectinload(ExamAttempt.answers))
+    )
+    return [
+        AnswerState(question_id=answer.question_id, selected_option=answer.selected_option)
+        for answer in sorted(refreshed_attempt.answers, key=lambda item: item.question_id)
+    ]
 
 
 @router.post("/attempts/{attempt_id}/submit", response_model=AttemptResult)
@@ -166,26 +243,41 @@ def submit_attempt(
     now_ts = datetime.now(timezone.utc).timestamp()
 
     question_map = {question.id: question for question in attempt.assignment.exam.questions}
-    answer_map = {answer.question_id: answer.selected_option for answer in payload.answers}
+    if payload.answers:
+        incoming_answers = {answer.question_id: answer.selected_option for answer in payload.answers}
+        existing_answers = {answer.question_id: answer for answer in attempt.answers}
+        for question_id, selected_option in incoming_answers.items():
+            existing_answer = existing_answers.get(question_id)
+            if existing_answer:
+                existing_answer.selected_option = selected_option
+            elif question_id in question_map:
+                db.add(
+                    AttemptAnswer(
+                        attempt_id=attempt.id,
+                        question_id=question_id,
+                        selected_option=selected_option,
+                        is_correct=False,
+                        marks_awarded=0,
+                    )
+                )
+        db.flush()
+        db.refresh(attempt)
 
-    attempt.answers.clear()
+    answer_map = {answer.question_id: answer.selected_option for answer in attempt.answers}
+
     score = 0
-    for question_id, question in question_map.items():
-        selected_option = answer_map.get(question_id)
+    for answer in attempt.answers:
+        question = question_map.get(answer.question_id)
+        selected_option = answer.selected_option
+        if question is None:
+            continue
         if selected_option is None:
             continue
         is_correct = selected_option == question.correct_option
         marks_awarded = question.marks if is_correct else 0
         score += marks_awarded
-        db.add(
-            AttemptAnswer(
-                attempt_id=attempt.id,
-                question_id=question_id,
-                selected_option=selected_option,
-                is_correct=is_correct,
-                marks_awarded=marks_awarded,
-            )
-        )
+        answer.is_correct = is_correct
+        answer.marks_awarded = marks_awarded
 
     _ = now_ts > allowed_finish_time
     attempt.status = AttemptStatus.submitted
