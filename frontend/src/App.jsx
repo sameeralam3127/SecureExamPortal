@@ -80,6 +80,9 @@ function App({ route = '/login', onNavigate = () => {} }) {
   const [history, setHistory] = useState([])
   const [liveExam, setLiveExam] = useState(null)
   const [answers, setAnswers] = useState({})
+  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0)
+  const [isReviewMode, setIsReviewMode] = useState(false)
+  const [autosaveState, setAutosaveState] = useState('')
   const [secondsLeft, setSecondsLeft] = useState(0)
 
   const authHeaders = useMemo(
@@ -352,10 +355,39 @@ function App({ route = '/login', onNavigate = () => {} }) {
         method: 'POST',
       })
       setLiveExam(data)
-      setAnswers({})
+      setAnswers(
+        Object.fromEntries(
+          (data.saved_answers || []).map((answer) => [answer.question_id, answer.selected_option]),
+        ),
+      )
+      setCurrentQuestionIndex(data.current_question_index || 0)
+      setIsReviewMode(false)
+      setAutosaveState('')
       setSecondsLeft(data.duration_minutes * 60)
       setActiveTab('exam')
     } catch (error) {
+      setMessage(error.message)
+    }
+  }
+
+  const autosaveAnswer = async (questionId, selectedOption) => {
+    if (!liveExam) return
+    const nextAnswers = { ...answers, [questionId]: selectedOption }
+    setAnswers(nextAnswers)
+    setAutosaveState('Saving...')
+    try {
+      await apiRequest(`/api/v1/student/attempts/${liveExam.attempt_id}/answers`, {
+        method: 'PUT',
+        body: JSON.stringify({
+          answers: Object.entries(nextAnswers).map(([savedQuestionId, savedOption]) => ({
+            question_id: Number(savedQuestionId),
+            selected_option: savedOption,
+          })),
+        }),
+      })
+      setAutosaveState('All answers saved')
+    } catch (error) {
+      setAutosaveState('Autosave failed')
       setMessage(error.message)
     }
   }
@@ -375,6 +407,9 @@ function App({ route = '/login', onNavigate = () => {} }) {
       setMessage(`Exam submitted. Score ${result.score}/${result.total_marks} (${result.percentage}%)`)
       setLiveExam(null)
       setAnswers({})
+      setCurrentQuestionIndex(0)
+      setIsReviewMode(false)
+      setAutosaveState('')
       setSecondsLeft(0)
       setActiveTab('reports')
       loadStudentData()
@@ -388,6 +423,19 @@ function App({ route = '/login', onNavigate = () => {} }) {
     const seconds = value % 60
     return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
   }
+
+  const currentQuestion = liveExam?.questions?.[currentQuestionIndex] || null
+  const answeredCount = liveExam
+    ? liveExam.questions.filter((question) => Boolean(answers[question.id])).length
+    : 0
+  const furthestAccessibleIndex = liveExam
+    ? Math.min(
+        liveExam.questions.findIndex((question) => !answers[question.id]) === -1
+          ? liveExam.question_count - 1
+          : liveExam.questions.findIndex((question) => !answers[question.id]),
+        liveExam.question_count - 1,
+      )
+    : 0
 
   if (!session) {
     return (
@@ -857,37 +905,115 @@ function App({ route = '/login', onNavigate = () => {} }) {
               <div className="exam-header">
                 <div>
                   <h2>{liveExam.title}</h2>
-                  <p className="helper-text">{liveExam.description}</p>
+                  <p className="helper-text">
+                    {liveExam.description} | Answered {answeredCount}/{liveExam.question_count}
+                  </p>
                 </div>
-                <div className={`timer-pill ${secondsLeft < 60 ? 'urgent' : ''}`}>{formatTimer(secondsLeft)}</div>
+                <div className="exam-status-block">
+                  <div className={`timer-pill ${secondsLeft < 60 ? 'urgent' : ''}`}>{formatTimer(secondsLeft)}</div>
+                  <span className="autosave-text">{autosaveState || 'Autosave ready'}</span>
+                </div>
               </div>
-              <div className="list-stack">
+              <div className="question-progress-row">
                 {liveExam.questions.map((question, index) => (
-                  <div className="question-card" key={question.id}>
+                  <button
+                    key={question.id}
+                    type="button"
+                    className={`question-pill ${index === currentQuestionIndex && !isReviewMode ? 'active-pill' : ''} ${
+                      answers[question.id] ? 'answered-pill' : ''
+                    }`}
+                    disabled={index > furthestAccessibleIndex}
+                    onClick={() => {
+                      if (index <= furthestAccessibleIndex) {
+                        setCurrentQuestionIndex(index)
+                      }
+                    }}
+                  >
+                    {index + 1}
+                  </button>
+                ))}
+              </div>
+              {isReviewMode ? (
+                <div className="list-stack">
+                  {liveExam.questions.map((question, index) => (
+                    <div className="question-card" key={question.id}>
+                      <strong>
+                        {index + 1}. {question.question_text}
+                      </strong>
+                      <p className="helper-text">
+                        Selected answer: {answers[question.id] ? `${answers[question.id]}` : 'Not answered'}
+                      </p>
+                      <button
+                        className="mini-btn"
+                        type="button"
+                        onClick={() => {
+                          setCurrentQuestionIndex(index)
+                          setIsReviewMode(false)
+                        }}
+                      >
+                        Edit answer
+                      </button>
+                    </div>
+                  ))}
+                  <div className="inline-fields">
+                    <button className="action-btn green" type="button" onClick={() => setIsReviewMode(false)}>
+                      Back to Questions
+                    </button>
+                    <button className="action-btn blue" type="button" onClick={submitExam}>
+                      Submit Exam
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                currentQuestion && (
+                  <div className="question-card">
                     <strong>
-                      {index + 1}. {question.question_text}
+                      Question {currentQuestionIndex + 1} of {liveExam.question_count}
                     </strong>
+                    <h3 className="question-title">{currentQuestion.question_text}</h3>
                     {['A', 'B', 'C', 'D'].map((optionKey) => (
-                      <label className="option-choice" key={`${question.id}-${optionKey}`}>
+                      <label className="option-choice" key={`${currentQuestion.id}-${optionKey}`}>
                         <input
                           type="radio"
-                          name={`question-${question.id}`}
-                          checked={answers[question.id] === optionKey}
-                          onChange={() =>
-                            setAnswers((current) => ({ ...current, [question.id]: optionKey }))
-                          }
+                          name={`question-${currentQuestion.id}`}
+                          checked={answers[currentQuestion.id] === optionKey}
+                          onChange={() => autosaveAnswer(currentQuestion.id, optionKey)}
                         />
                         <span>
-                          {optionKey}. {question[`option_${optionKey.toLowerCase()}`]}
+                          {optionKey}. {currentQuestion[`option_${optionKey.toLowerCase()}`]}
                         </span>
                       </label>
                     ))}
+                    <div className="inline-fields">
+                      <button
+                        className="action-btn green"
+                        type="button"
+                        disabled={currentQuestionIndex === 0}
+                        onClick={() => setCurrentQuestionIndex((index) => Math.max(index - 1, 0))}
+                      >
+                        Previous
+                      </button>
+                      {currentQuestionIndex < liveExam.question_count - 1 ? (
+                        <button
+                          className="action-btn blue"
+                          type="button"
+                          onClick={() =>
+                            setCurrentQuestionIndex((index) =>
+                              Math.min(index + 1, liveExam.question_count - 1),
+                            )
+                          }
+                        >
+                          Next
+                        </button>
+                      ) : (
+                        <button className="action-btn yellow" type="button" onClick={() => setIsReviewMode(true)}>
+                          Review Answers
+                        </button>
+                      )}
+                    </div>
                   </div>
-                ))}
-              </div>
-              <button className="action-btn blue" type="button" onClick={submitExam}>
-                Submit Exam
-              </button>
+                )
+              )}
             </section>
           ) : (
             <section className="white-panel">
