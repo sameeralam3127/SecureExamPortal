@@ -319,12 +319,64 @@ textarea {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
+.exam-status-block {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: flex-end;
+}
+
+.autosave-text {
+  font-size: 0.9rem;
+  color: #64748b;
+  font-weight: 600;
+}
+
+.question-progress-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 20px 0;
+}
+
+.question-pill {
+  width: 42px;
+  height: 42px;
+  border-radius: 999px;
+  border: 1px solid #cbd5e1;
+  background: #ffffff;
+  color: #334155;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.question-pill.answered-pill {
+  background: #dbeafe;
+  border-color: #60a5fa;
+}
+
+.question-pill.active-pill {
+  background: #2563eb;
+  border-color: #2563eb;
+  color: #fff;
+}
+
+.question-pill:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
 .question-card,
 .row-card {
   background: #f8fafc;
   border: 1px solid #e5e7eb;
   border-radius: 14px;
   padding: 16px;
+}
+
+.question-title {
+  margin: 14px 0 8px;
+  color: #111827;
 }
 
 .option-choice {
@@ -357,7 +409,8 @@ textarea {
   .welcome-banner,
   .demo-row,
   .exam-header,
-  .row-flex {
+  .row-flex,
+  .exam-status-block {
     flex-direction: column;
     align-items: flex-start;
   }

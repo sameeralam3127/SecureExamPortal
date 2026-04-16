@@ -87,6 +87,15 @@ class StudentDashboard(BaseModel):
     average_score: float = 0
 
 
+class AnswerSubmit(BaseModel):
+    question_id: int
+    selected_option: str = Field(pattern="^[ABCD]$")
+
+
+class AnswerState(AnswerSubmit):
+    pass
+
+
 class ExamStartResponse(BaseModel):
     attempt_id: int
     assignment_id: int
@@ -95,12 +104,10 @@ class ExamStartResponse(BaseModel):
     description: str
     duration_minutes: int
     started_at: datetime
+    question_count: int
+    current_question_index: int
+    saved_answers: list[AnswerState]
     questions: list[QuestionRead]
-
-
-class AnswerSubmit(BaseModel):
-    question_id: int
-    selected_option: str = Field(pattern="^[ABCD]$")
 
 
 class AttemptSubmitRequest(BaseModel):
