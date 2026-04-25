@@ -79,7 +79,6 @@
 
 .nav-links button,
 .logout-btn,
-.demo-row button,
 .action-btn,
 .mini-btn {
   border: 0;
@@ -295,24 +294,12 @@ textarea {
   color: #64748b;
 }
 
-.demo-row,
 .exam-header,
 .row-flex {
   display: flex;
   gap: 12px;
   justify-content: space-between;
   align-items: center;
-}
-
-.demo-row {
-  margin: 24px 0;
-}
-
-.demo-row button {
-  background: #eff6ff;
-  color: #1d4ed8;
-  padding: 12px 18px;
-  border-radius: 12px;
 }
 
 .inline-fields {
@@ -355,7 +342,6 @@ textarea {
   .portal-navbar,
   .nav-links,
   .welcome-banner,
-  .demo-row,
   .exam-header,
   .row-flex {
     flex-direction: column;
