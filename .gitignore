@@ -54,6 +54,7 @@ Thumbs.db
 # Environment variables and secrets
 *.env
 .env.*
+!.env.example
 secrets.json
 
 # Compiled static files
@@ -67,3 +68,6 @@ pip-wheel-metadata/
 
 
 /node_modules/
+node_modules/
+frontend/.vite/
+frontend/dist/
