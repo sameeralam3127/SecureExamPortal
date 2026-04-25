@@ -1,0 +1,40 @@
+from app.schemas.core import HealthResponse
+from app.schemas.exam import (
+    AdminQuestionRead,
+    AnswerSubmit,
+    AssignmentCreate,
+    AssignmentRead,
+    AssignmentStatusRead,
+    AttemptResult,
+    AttemptSubmitRequest,
+    DashboardStats,
+    ExamCreate,
+    ExamRead,
+    ExamStartResponse,
+    QuestionCreate,
+    QuestionRead,
+    StudentDashboard,
+)
+from app.schemas.user import LoginRequest, LoginResponse, UserCreate, UserRead
+
+__all__ = [
+    "AdminQuestionRead",
+    "AnswerSubmit",
+    "AssignmentCreate",
+    "AssignmentRead",
+    "AssignmentStatusRead",
+    "AttemptResult",
+    "AttemptSubmitRequest",
+    "DashboardStats",
+    "ExamCreate",
+    "ExamRead",
+    "ExamStartResponse",
+    "HealthResponse",
+    "LoginRequest",
+    "LoginResponse",
+    "QuestionCreate",
+    "QuestionRead",
+    "StudentDashboard",
+    "UserCreate",
+    "UserRead",
+]

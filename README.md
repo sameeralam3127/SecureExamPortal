@@ -1,184 +1,212 @@
 # Secure Exam Portal
 
-A comprehensive **MCA Project** built with Flask for **secure online examinations**.
-It supports both **local login** (username/password) and **Google Account login** for convenience and enhanced security.
+Production-ready online examination portal with a FastAPI backend, PostgreSQL database, and React frontend.
 
-The system provides role-based dashboards for **Admins** and **Students**, ensuring seamless exam management and participation.
+## Stack
 
-**Live Prototype Demo:** [https://sameeralam3127.pythonanywhere.com/](https://sameeralam3127.pythonanywhere.com/)
+- Backend: FastAPI, SQLAlchemy, PostgreSQL, Gunicorn/Uvicorn
+- Frontend: React, Vite, Nginx
+- Containers: Docker and Docker Compose
+- Auth: Password login, role-based access, optional Google sign-in
+- Notifications: Optional SMTP assignment email
 
-See the [Screenshots & Architecture](SCREENSHOT.md) for more details.
+## Repository Layout
 
----
-
-## Features
-
-### Admin Features
-
-1. **Dashboard** – Overview of users, exams, and results
-2. **User Management** – Add/edit/delete users; assign exams
-3. **Exam Management** – Create, edit, and control exam availability
-4. **Reports & Analytics** – View, filter, and export performance data
-
-### Student Features
-
-1. **Dashboard** – List of available and completed exams
-2. **Exam Taking** – Timer-based, auto-submission, real-time scoring
-3. **Result Review** – Detailed breakdown of performance
-
-### Security & Authentication
-
-- **Local Login** (username + password)
-- **Google Account Login** (OAuth 2.0)
-- Passwords hashed via **Werkzeug**
-- **Flask-Login** for session management
-- **Role-based access control** for Admins and Students
-
-### UI & UX
-
-- Built with **Bootstrap 5** for responsive, mobile-friendly layouts
-- Modern components, modals, and interactive progress bars
-- Toast notifications and user-friendly feedback
-
----
-
-## Technical Overview
-
-### Database Models
-
-- **User** – Authentication, roles, Google account info
-- **Exam** – Exam structure, total marks, duration
-- **Question** – MCQs with options and correct answers
-- **ExamResult** – Stores student exam attempts and scores
-- **UserAnswer** – Tracks selected answers per question
-
-### Stack
-
-- **Flask** (Backend)
-- **Flask-Login** (Authentication)
-- **Flask-Dance** (Google OAuth)
-- **SQLite / SQLAlchemy** (Database ORM)
-- **Bootstrap 5** (Frontend)
-
----
-
-## Setup Instructions
-
-### Clone the repository
-
-```bash
-git clone https://github.com/sameeralam3127/SecureExamPortal.git
-cd SecureExamPortal
+```text
+SecureExamPortal/
+├── backend/
+│   ├── app/
+│   │   ├── config/
+│   │   ├── extensions/
+│   │   ├── models/
+│   │   ├── modules/
+│   │   ├── repositories/
+│   │   ├── schemas/
+│   │   └── utils/
+│   ├── docker/Dockerfile
+│   ├── manage.py
+│   ├── requirements.txt
+│   └── wsgi.py
+├── frontend/
+│   ├── src/
+│   ├── Dockerfile
+│   ├── nginx.conf
+│   └── package.json
+├── docker-compose.yml
+├── docker-compose.dev.yml
+└── .env.example
 ```
 
-### Create and activate a virtual environment (optional)
+## Production Configuration
 
-Using Poetry (recommended):
+Copy `.env.example` to `.env` and replace every production placeholder before starting containers.
 
-```bash
-/bin/bash -c "$(curl -sSL https://install.python-poetry.org)"
-export PATH="$HOME/.local/bin:$PATH"
-poetry install
-poetry shell
+Required production values:
+
+```env
+POSTGRES_PASSWORD=
+DATABASE_URL=
+AUTH_SECRET_KEY=
+CORS_ORIGINS=["https://your-domain.example"]
+FRONTEND_BASE_URL=https://your-domain.example
 ```
 
-Or with venv:
+Optional first-admin bootstrap for a fresh database:
 
-```bash
-python -m venv venv
-source venv/bin/activate  # (Windows: venv\Scripts\activate)
-pip install -r requirements.txt
+```env
+INITIAL_ADMIN_USERNAME=
+INITIAL_ADMIN_PASSWORD=
+INITIAL_ADMIN_EMAIL=
+INITIAL_ADMIN_FULL_NAME=Portal Administrator
 ```
 
----
+The application does not create seeded users, seeded passwords, or starter exams automatically.
 
-## Environment Configuration
+## Run With Docker
 
-Create a `.env` file in the **project root** (`SecureExamPortal/.env`) with the following variables:
-
-```bash
-# Flask Secret
-FLASK_SECRET_KEY=your_random_secret_key_here
-
-# Google OAuth Credentials
-GOOGLE_CLIENT_ID=your_google_client_id_here
-GOOGLE_CLIENT_SECRET=your_google_client_secret_here
-```
-
-> ⚠️ Make sure to enable the **Google OAuth API** in your Google Cloud Console
-> and set your **Authorized redirect URIs** as:
->
-> ```
-> http://localhost:5000/login/google/authorized
-> http://127.0.0.1:5000/login/google/authorized
-> ```
-
----
-
-## ▶Running the App
+Production-style stack built from this repository:
 
 ```bash
-python run.py
+docker compose up --build
 ```
 
-Then open your browser at:
-👉 **[http://127.0.0.1:5000](http://127.0.0.1:5000)**
+Production stack using the published Docker Hub images:
 
-**Default credentials:**
+```bash
+docker pull sameeralam3127/secure-exam-backend:latest
+docker pull sameeralam3127/secure-exam-frontend:latest
+```
 
-- **Admin:** `admin / admin123`
-- **Student:** `student1 / student123`
+Create `.env` from `.env.example`, set the required production values, then use the published images in your deployment:
 
----
+```yaml
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: secure_exam_portal
+      POSTGRES_USER: secure_exam_user
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
 
-## Google Login Flow
+  backend:
+    image: sameeralam3127/secure-exam-backend:latest
+    environment:
+      ENVIRONMENT: production
+      AUTH_SECRET_KEY: ${AUTH_SECRET_KEY}
+      DATABASE_URL: ${DATABASE_URL}
+      CORS_ORIGINS: ${CORS_ORIGINS}
+      FRONTEND_BASE_URL: ${FRONTEND_BASE_URL}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USERNAME: ${SMTP_USERNAME:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_FROM_EMAIL: ${SMTP_FROM_EMAIL:-no-reply@secureexamportal.com}
+      SMTP_USE_TLS: ${SMTP_USE_TLS:-true}
+      INITIAL_ADMIN_USERNAME: ${INITIAL_ADMIN_USERNAME:-}
+      INITIAL_ADMIN_PASSWORD: ${INITIAL_ADMIN_PASSWORD:-}
+      INITIAL_ADMIN_EMAIL: ${INITIAL_ADMIN_EMAIL:-}
+      INITIAL_ADMIN_FULL_NAME: ${INITIAL_ADMIN_FULL_NAME:-Portal Administrator}
+    depends_on:
+      - db
 
-1. Click “Sign in with Google” on the login page
-2. Approve access via your Google Account
-3. On success:
+  frontend:
+    image: sameeralam3127/secure-exam-frontend:latest
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
 
-   - A user is created automatically (if new)
-   - You’re redirected to your **Admin** or **Student** dashboard
+volumes:
+  postgres_data:
+```
 
----
+Development stack with hot reload:
 
-## Error Handling
+```bash
+docker compose -f docker-compose.dev.yml up --build
+```
 
-- Custom error pages (`404`, `500`)
-- Session expiry notifications
-- Safe database relationships with cascade delete
+Local development URLs:
 
----
+- Frontend: `http://localhost:5173`
+- Backend API: `http://localhost:8001`
+- API docs: `http://localhost:8001/docs`
 
-## Future Enhancements
+## Docker Hub Images
 
-- Randomized question sets
-- Bulk student import (CSV)
-- Real-time analytics dashboard
-- Email notifications and PDF report exports
-- Docker + CI/CD deployment
+Published images:
 
----
+```text
+sameeralam3127/secure-exam-backend:latest
+sameeralam3127/secure-exam-frontend:latest
+```
 
-## Contributing
+Build images locally:
 
-We welcome contributions!
-See [CONTRIBUTING.md](CONTRIBUTING.md) for pull request workflow and issue guidelines.
+```bash
+docker build -t sameeralam3127/secure-exam-backend:latest -f backend/docker/Dockerfile backend
+docker build -t sameeralam3127/secure-exam-frontend:latest frontend
+```
 
-## Security
+Push images:
 
-Report vulnerabilities privately through [SECURITY.md](SECURITY.md).
+```bash
+docker push sameeralam3127/secure-exam-backend:latest
+docker push sameeralam3127/secure-exam-frontend:latest
+```
 
-## License
+## API Surface
 
-Licensed under the **MIT License**.
-See [LICENSE](LICENSE) for more information.
+Main versioned endpoints:
 
----
+```text
+/api/v1/health
+/api/v1/auth/login
+/api/v1/auth/register
+/api/v1/auth/google
+/api/v1/admin/dashboard
+/api/v1/admin/students
+/api/v1/admin/students/bulk
+/api/v1/admin/exams
+/api/v1/admin/exams/bulk
+/api/v1/admin/assignments
+/api/v1/student/dashboard
+/api/v1/student/assignments
+/api/v1/student/attempts/history
+```
 
-<p align="center">
-  <img src="https://img.shields.io/badge/Made%20with-Love-red.svg" alt="Made with Love">
-  <img src="https://img.shields.io/badge/Powered%20by-Flask-blue.svg" alt="Flask">
-</p>
+## Bulk Upload Formats
 
----
+Bulk students textarea:
+
+```text
+Full Name,username,email,password
+```
+
+Bulk exams textarea:
+
+```json
+{
+  "exams": [
+    {
+      "title": "Exam Title",
+      "description": "Exam description",
+      "duration_minutes": 30,
+      "questions": [
+        {
+          "question_text": "Question text",
+          "option_a": "Option A",
+          "option_b": "Option B",
+          "option_c": "Option C",
+          "option_d": "Option D",
+          "correct_option": "A",
+          "marks": 1
+        }
+      ]
+    }
+  ]
+}
+```
