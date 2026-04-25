@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import './App.css'
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8001'
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || window.location.origin
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || ''
 const defaultQuestion = {
   question_text: '',
@@ -12,8 +12,7 @@ const defaultQuestion = {
   correct_option: 'A',
   marks: 1,
 }
-const userBulkTemplate = `Sameer Student,student2,student2@example.com,student123
-Riya Sharma,student3,student3@example.com,student123`
+const userBulkTemplate = 'Full Name,username,email,password'
 const examBulkTemplate = JSON.stringify(
   {
     exams: [
@@ -44,7 +43,7 @@ function App({ route = '/login', onNavigate = () => {} }) {
     const saved = localStorage.getItem('secureExamSession')
     return saved ? JSON.parse(saved) : null
   })
-  const [loginForm, setLoginForm] = useState({ username: 'admin', password: 'admin123' })
+  const [loginForm, setLoginForm] = useState({ username: '', password: '' })
   const [registerForm, setRegisterForm] = useState({
     full_name: '',
     username: '',
@@ -464,21 +463,7 @@ function App({ route = '/login', onNavigate = () => {} }) {
           ) : (
             <>
               <h1>Login to continue</h1>
-              <p>Use demo buttons, password login, or Google sign-in.</p>
-              <div className="demo-row">
-                <button
-                  type="button"
-                  onClick={() => setLoginForm({ username: 'admin', password: 'admin123' })}
-                >
-                  Admin Demo
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setLoginForm({ username: 'student1', password: 'student123' })}
-                >
-                  Student Demo
-                </button>
-              </div>
+              <p>Use your portal credentials or Google sign-in.</p>
               <form className="form-stack" onSubmit={handleLogin}>
                 <input
                   value={loginForm.username}
