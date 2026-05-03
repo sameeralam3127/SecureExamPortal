@@ -439,8 +439,23 @@ function App({ route = '/login', onNavigate = () => {} }) {
   if (!session) {
     return (
       <main className="login-shell">
+        <aside className="login-hero" aria-hidden="true">
+          <div className="hero-kicker">Trusted assessment workspace</div>
+          <h1>Secure exams, calmer operations.</h1>
+          <p>
+            Run assignments, monitor completion, and give students a focused testing experience.
+          </p>
+          <div className="hero-stats">
+            <span>Live autosave</span>
+            <span>Role dashboards</span>
+            <span>Bulk setup</span>
+          </div>
+        </aside>
         <section className="login-card">
-          <div className="brand-mark">🎓 Secure Exam Portal</div>
+          <div className="brand-mark">
+            <span className="brand-icon">S</span>
+            <span>Secure Exam Portal</span>
+          </div>
           <div className="auth-tab-row">
             <button
               type="button"
@@ -578,16 +593,16 @@ function App({ route = '/login', onNavigate = () => {} }) {
           <h2>Quick Actions</h2>
           <div className="quick-grid">
             <button className="action-btn blue" onClick={() => setActiveTab('exams')} type="button">
-              + Create New Exam
+              Create New Exam
             </button>
             <button className="action-btn green" onClick={() => setActiveTab('users')} type="button">
-              👤 Manage Users
+              Manage Users
             </button>
             <button className="action-btn cyan" onClick={() => setActiveTab('reports')} type="button">
-              📈 View Reports
+              View Reports
             </button>
             <button className="action-btn yellow" onClick={() => setActiveTab('exams')} type="button">
-              ☰ Manage Exams
+              Manage Exams
             </button>
           </div>
         </section>
@@ -1050,7 +1065,10 @@ function App({ route = '/login', onNavigate = () => {} }) {
   function renderTopbar(tabs) {
     return (
       <header className="portal-navbar">
-        <div className="brand-area">🎓 Secure Exam Portal</div>
+        <div className="brand-area">
+          <span className="brand-icon">S</span>
+          <span>Secure Exam Portal</span>
+        </div>
         <nav className="nav-links">
           {tabs.map((tab) => (
             <button
