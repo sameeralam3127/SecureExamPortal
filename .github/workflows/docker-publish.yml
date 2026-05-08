@@ -21,20 +21,8 @@ env:
 
 jobs:
   publish:
-    name: Publish ${{ matrix.service }} image
+    name: Publish single application image
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - service: backend
-            image: secure-exam-backend
-            context: ./backend
-            file: ./backend/docker/Dockerfile
-          - service: frontend
-            image: secure-exam-frontend
-            context: ./frontend
-            file: ./frontend/Dockerfile
 
     steps:
       - name: Checkout repository
@@ -54,7 +42,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/${{ matrix.image }}
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/secure-exam-portal
           tags: |
             type=raw,value=latest,enable={{is_default_branch}}
             type=ref,event=branch
@@ -64,24 +52,24 @@ jobs:
             type=semver,pattern={{major}}.{{minor}}
             type=sha,prefix=sha-
           labels: |
-            org.opencontainers.image.title=${{ matrix.image }}
-            org.opencontainers.image.description=Secure Exam Portal ${{ matrix.service }} image
+            org.opencontainers.image.title=secure-exam-portal
+            org.opencontainers.image.description=Secure Exam Portal combined frontend and backend image
 
       - name: Build and push image
         uses: docker/build-push-action@v6
         with:
-          context: ${{ matrix.context }}
-          file: ${{ matrix.file }}
+          context: .
+          file: ./Dockerfile
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha,scope=${{ matrix.service }}
-          cache-to: type=gha,mode=max,scope=${{ matrix.service }}
+          cache-from: type=gha,scope=secure-exam-portal
+          cache-to: type=gha,mode=max,scope=secure-exam-portal
 
       - name: Write image summary
         run: |
           {
-            echo "### ${{ matrix.service }} image"
+            echo "### Secure Exam Portal image"
             echo ""
             echo "Published tags:"
             echo '${{ steps.meta.outputs.tags }}' | sed 's/^/- /'
@@ -106,8 +94,7 @@ jobs:
 
           Published GitHub Packages:
 
-          - `ghcr.io/${{ github.repository_owner }}/secure-exam-backend:${{ github.ref_name }}`
-          - `ghcr.io/${{ github.repository_owner }}/secure-exam-frontend:${{ github.ref_name }}`
+          - `ghcr.io/${{ github.repository_owner }}/secure-exam-portal:${{ github.ref_name }}`
 
           The `latest` tag is also updated for builds from `main`.
           NOTES

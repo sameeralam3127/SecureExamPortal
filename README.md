@@ -70,14 +70,13 @@ Production-style stack built from this repository:
 docker compose up --build
 ```
 
-Production stack using the published Docker Hub images:
+Production stack using the published GitHub Packages image:
 
 ```bash
-docker pull sameeralam3127/secure-exam-backend:latest
-docker pull sameeralam3127/secure-exam-frontend:latest
+docker pull ghcr.io/sameeralam3127/secure-exam-portal:latest
 ```
 
-Create `.env` from `.env.example`, set the required production values, then use the published images in your deployment:
+Create `.env` from `.env.example`, set the required production values, then use the published image in your deployment:
 
 ```yaml
 services:
@@ -90,8 +89,10 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
 
-  backend:
-    image: sameeralam3127/secure-exam-backend:latest
+  app:
+    image: ghcr.io/sameeralam3127/secure-exam-portal:latest
+    ports:
+      - "80:80"
     environment:
       ENVIRONMENT: production
       AUTH_SECRET_KEY: ${AUTH_SECRET_KEY}
@@ -112,13 +113,6 @@ services:
     depends_on:
       - db
 
-  frontend:
-    image: sameeralam3127/secure-exam-frontend:latest
-    ports:
-      - "80:80"
-    depends_on:
-      - backend
-
 volumes:
   postgres_data:
 ```
@@ -135,27 +129,24 @@ Local development URLs:
 - Backend API: `http://localhost:8001`
 - API docs: `http://localhost:8001/docs`
 
-## Docker Hub Images
+## Docker Image
 
-Published images:
+Published image:
 
 ```text
-sameeralam3127/secure-exam-backend:latest
-sameeralam3127/secure-exam-frontend:latest
+ghcr.io/sameeralam3127/secure-exam-portal:latest
 ```
 
-Build images locally:
+Build the image locally:
 
 ```bash
-docker build -t sameeralam3127/secure-exam-backend:latest -f backend/docker/Dockerfile backend
-docker build -t sameeralam3127/secure-exam-frontend:latest frontend
+docker build -t secure-exam-portal:local .
 ```
 
-Push images:
+Run the local image:
 
 ```bash
-docker push sameeralam3127/secure-exam-backend:latest
-docker push sameeralam3127/secure-exam-frontend:latest
+docker run --env-file .env -p 80:80 secure-exam-portal:local
 ```
 
 ## GitHub Packages and Releases
@@ -163,11 +154,10 @@ docker push sameeralam3127/secure-exam-frontend:latest
 Docker images are published to GitHub Container Registry by the `Build and Publish Docker Images`
 workflow.
 
-Published package names:
+Published package name:
 
 ```text
-ghcr.io/sameeralam3127/secure-exam-backend
-ghcr.io/sameeralam3127/secure-exam-frontend
+ghcr.io/sameeralam3127/secure-exam-portal
 ```
 
 Publishing rules:
