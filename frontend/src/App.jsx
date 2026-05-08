@@ -20,6 +20,11 @@ const examBulkTemplate = JSON.stringify(
         title: 'Computer Basics',
         description: 'Introductory MCQ exam',
         duration_minutes: 20,
+        block_clipboard: true,
+        block_context_menu: true,
+        block_inspect_shortcuts: true,
+        enforce_fullscreen: false,
+        track_focus_loss: true,
         questions: [
           {
             question_text: 'CPU stands for?',
@@ -57,6 +62,7 @@ function App({ route = '/login', onNavigate = () => {} }) {
   const [students, setStudents] = useState([])
   const [exams, setExams] = useState([])
   const [assignments, setAssignments] = useState([])
+  const [securityIncidents, setSecurityIncidents] = useState([])
   const [studentForm, setStudentForm] = useState({
     full_name: '',
     username: '',
@@ -69,6 +75,11 @@ function App({ route = '/login', onNavigate = () => {} }) {
     title: '',
     description: '',
     duration_minutes: 30,
+    block_clipboard: true,
+    block_context_menu: true,
+    block_inspect_shortcuts: true,
+    enforce_fullscreen: false,
+    track_focus_loss: true,
     questions: [{ ...defaultQuestion }],
   })
   const [bulkExamsText, setBulkExamsText] = useState(examBulkTemplate)
@@ -83,6 +94,7 @@ function App({ route = '/login', onNavigate = () => {} }) {
   const [isReviewMode, setIsReviewMode] = useState(false)
   const [autosaveState, setAutosaveState] = useState('')
   const [secondsLeft, setSecondsLeft] = useState(0)
+  const [securityWarning, setSecurityWarning] = useState('')
 
   const authHeaders = useMemo(
     () => ({
@@ -141,16 +153,18 @@ function App({ route = '/login', onNavigate = () => {} }) {
   }
 
   const loadAdminData = async () => {
-    const [statsData, studentsData, examsData, assignmentData] = await Promise.all([
+    const [statsData, studentsData, examsData, assignmentData, incidentData] = await Promise.all([
       apiRequest('/api/v1/admin/dashboard'),
       apiRequest('/api/v1/admin/students'),
       apiRequest('/api/v1/admin/exams'),
       apiRequest('/api/v1/admin/assignments'),
+      apiRequest('/api/v1/admin/security-incidents'),
     ])
     setAdminStats(statsData)
     setStudents(studentsData)
     setExams(examsData)
     setAssignments(assignmentData)
+    setSecurityIncidents(incidentData)
   }
 
   const loadStudentData = async () => {
@@ -201,6 +215,86 @@ function App({ route = '/login', onNavigate = () => {} }) {
       submitExam()
     }
   }, [secondsLeft])
+
+  useEffect(() => {
+    if (!liveExam) return
+
+    const logIncident = (incidentType, detail) => {
+      setSecurityWarning(detail)
+      apiRequest(`/api/v1/student/attempts/${liveExam.attempt_id}/security-incidents`, {
+        method: 'POST',
+        body: JSON.stringify({ incident_type: incidentType, detail }),
+      }).catch((error) => setAutosaveState(`Security log failed: ${error.message}`))
+    }
+
+    const blockEvent = (event, incidentType, detail) => {
+      event.preventDefault()
+      logIncident(incidentType, detail)
+    }
+
+    const handleClipboard = (event) => {
+      if (liveExam.block_clipboard) {
+        blockEvent(event, event.type, `${event.type} was blocked during the live exam.`)
+      }
+    }
+
+    const handleContextMenu = (event) => {
+      if (liveExam.block_context_menu) {
+        blockEvent(event, 'context_menu', 'Right-click was blocked during the live exam.')
+      }
+    }
+
+    const handleKeyDown = (event) => {
+      if (!liveExam.block_inspect_shortcuts) return
+      const key = event.key.toLowerCase()
+      const isInspectShortcut =
+        event.key === 'F12' ||
+        (event.ctrlKey && event.shiftKey && ['i', 'j', 'c'].includes(key)) ||
+        (event.metaKey && event.altKey && ['i', 'j', 'c'].includes(key)) ||
+        ((event.ctrlKey || event.metaKey) && key === 'u')
+      if (isInspectShortcut) {
+        blockEvent(event, 'inspect_shortcut', 'Developer-tool shortcut was blocked during the live exam.')
+      }
+    }
+
+    const handleVisibilityChange = () => {
+      if (liveExam.track_focus_loss && document.visibilityState === 'hidden') {
+        logIncident('tab_switch', 'Tab switch or page hide detected during the live exam.')
+      }
+    }
+
+    const handleBlur = () => {
+      if (liveExam.track_focus_loss) {
+        logIncident('window_blur', 'Exam window lost focus during the live exam.')
+      }
+    }
+
+    const handleFullscreenChange = () => {
+      if (liveExam.enforce_fullscreen && !document.fullscreenElement) {
+        logIncident('fullscreen_exit', 'Fullscreen mode was exited during the live exam.')
+      }
+    }
+
+    document.addEventListener('copy', handleClipboard)
+    document.addEventListener('cut', handleClipboard)
+    document.addEventListener('paste', handleClipboard)
+    document.addEventListener('contextmenu', handleContextMenu)
+    document.addEventListener('keydown', handleKeyDown)
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    document.addEventListener('fullscreenchange', handleFullscreenChange)
+    window.addEventListener('blur', handleBlur)
+
+    return () => {
+      document.removeEventListener('copy', handleClipboard)
+      document.removeEventListener('cut', handleClipboard)
+      document.removeEventListener('paste', handleClipboard)
+      document.removeEventListener('contextmenu', handleContextMenu)
+      document.removeEventListener('keydown', handleKeyDown)
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+      document.removeEventListener('fullscreenchange', handleFullscreenChange)
+      window.removeEventListener('blur', handleBlur)
+    }
+  }, [liveExam, authHeaders])
 
   const handleLogin = async (event) => {
     event.preventDefault()
@@ -307,6 +401,11 @@ function App({ route = '/login', onNavigate = () => {} }) {
         title: '',
         description: '',
         duration_minutes: 30,
+        block_clipboard: true,
+        block_context_menu: true,
+        block_inspect_shortcuts: true,
+        enforce_fullscreen: false,
+        track_focus_loss: true,
         questions: [{ ...defaultQuestion }],
       })
       setMessage('Exam created successfully')
@@ -354,6 +453,7 @@ function App({ route = '/login', onNavigate = () => {} }) {
         method: 'POST',
       })
       setLiveExam(data)
+      setSecurityWarning('')
       setAnswers(
         Object.fromEntries(
           (data.saved_answers || []).map((answer) => [answer.question_id, answer.selected_option]),
@@ -364,6 +464,11 @@ function App({ route = '/login', onNavigate = () => {} }) {
       setAutosaveState('')
       setSecondsLeft(data.duration_minutes * 60)
       setActiveTab('exam')
+      if (data.enforce_fullscreen && document.documentElement.requestFullscreen) {
+        document.documentElement.requestFullscreen().catch(() => {
+          setSecurityWarning('Fullscreen is required for this exam. Use the browser prompt to enter fullscreen.')
+        })
+      }
     } catch (error) {
       setMessage(error.message)
     }
@@ -406,6 +511,7 @@ function App({ route = '/login', onNavigate = () => {} }) {
       setMessage(`Exam submitted. Score ${result.score}/${result.total_marks} (${result.percentage}%)`)
       setLiveExam(null)
       setAnswers({})
+      setSecurityWarning('')
       setCurrentQuestionIndex(0)
       setIsReviewMode(false)
       setAutosaveState('')
@@ -713,6 +819,62 @@ function App({ route = '/login', onNavigate = () => {} }) {
                     setExamForm((current) => ({ ...current, description: event.target.value }))
                   }
                 />
+                <div className="security-policy-box">
+                  <strong>Security Policies</strong>
+                  <label>
+                    <input
+                      type="checkbox"
+                      checked={examForm.block_clipboard}
+                      onChange={(event) =>
+                        setExamForm((current) => ({ ...current, block_clipboard: event.target.checked }))
+                      }
+                    />
+                    Block copy, paste, and cut
+                  </label>
+                  <label>
+                    <input
+                      type="checkbox"
+                      checked={examForm.block_context_menu}
+                      onChange={(event) =>
+                        setExamForm((current) => ({ ...current, block_context_menu: event.target.checked }))
+                      }
+                    />
+                    Block right-click menu
+                  </label>
+                  <label>
+                    <input
+                      type="checkbox"
+                      checked={examForm.block_inspect_shortcuts}
+                      onChange={(event) =>
+                        setExamForm((current) => ({
+                          ...current,
+                          block_inspect_shortcuts: event.target.checked,
+                        }))
+                      }
+                    />
+                    Block inspect/developer shortcuts
+                  </label>
+                  <label>
+                    <input
+                      type="checkbox"
+                      checked={examForm.track_focus_loss}
+                      onChange={(event) =>
+                        setExamForm((current) => ({ ...current, track_focus_loss: event.target.checked }))
+                      }
+                    />
+                    Log tab switches and window focus loss
+                  </label>
+                  <label>
+                    <input
+                      type="checkbox"
+                      checked={examForm.enforce_fullscreen}
+                      onChange={(event) =>
+                        setExamForm((current) => ({ ...current, enforce_fullscreen: event.target.checked }))
+                      }
+                    />
+                    Require fullscreen during exam
+                  </label>
+                </div>
                 {examForm.questions.map((question, index) => (
                   <div className="question-card" key={`q-${index + 1}`}>
                     <input
@@ -849,6 +1011,25 @@ function App({ route = '/login', onNavigate = () => {} }) {
                 ))}
               </div>
             </article>
+            <article className="white-panel wide-panel">
+              <h2>Security Incident Report</h2>
+              <div className="list-stack">
+                {securityIncidents.length ? (
+                  securityIncidents.map((incident) => (
+                    <div className="row-card" key={incident.id}>
+                      <strong>{incident.incident_type.replaceAll('_', ' ')}</strong>
+                      <p>
+                        {incident.student_name || 'Student'} | {incident.exam_title || 'Exam'} |{' '}
+                        {new Date(incident.occurred_at).toLocaleString()}
+                      </p>
+                      <p>{incident.detail}</p>
+                    </div>
+                  ))
+                ) : (
+                  <p className="helper-text">No security incidents logged yet.</p>
+                )}
+              </div>
+            </article>
           </section>
         )}
       </main>
@@ -914,6 +1095,13 @@ function App({ route = '/login', onNavigate = () => {} }) {
                   <span className="autosave-text">{autosaveState || 'Autosave ready'}</span>
                 </div>
               </div>
+              <div className="security-policy-strip">
+                <span>{liveExam.block_clipboard ? 'Clipboard blocked' : 'Clipboard allowed'}</span>
+                <span>{liveExam.block_context_menu ? 'Right-click blocked' : 'Right-click allowed'}</span>
+                <span>{liveExam.track_focus_loss ? 'Focus monitored' : 'Focus not monitored'}</span>
+                <span>{liveExam.enforce_fullscreen ? 'Fullscreen required' : 'Fullscreen optional'}</span>
+              </div>
+              {securityWarning ? <div className="security-warning">{securityWarning}</div> : null}
               <div className="question-progress-row">
                 {liveExam.questions.map((question, index) => (
                   <button

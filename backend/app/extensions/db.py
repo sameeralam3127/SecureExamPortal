@@ -1,6 +1,7 @@
 from collections.abc import Generator
 
 from sqlalchemy import create_engine
+from sqlalchemy import inspect, text
 from sqlalchemy import select
 from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
 
@@ -29,6 +30,7 @@ def init_db() -> None:
     from app.utils.security import hash_password
 
     Base.metadata.create_all(bind=engine)
+    ensure_exam_security_columns()
 
     with SessionLocal() as db:
         if not settings.initial_admin_username:
@@ -54,3 +56,23 @@ def init_db() -> None:
             )
         )
         db.commit()
+
+
+def ensure_exam_security_columns() -> None:
+    inspector = inspect(engine)
+    if not inspector.has_table("portal_exams"):
+        return
+
+    existing_columns = {column["name"] for column in inspector.get_columns("portal_exams")}
+    security_columns = {
+        "block_clipboard": "BOOLEAN NOT NULL DEFAULT TRUE",
+        "block_context_menu": "BOOLEAN NOT NULL DEFAULT TRUE",
+        "block_inspect_shortcuts": "BOOLEAN NOT NULL DEFAULT TRUE",
+        "enforce_fullscreen": "BOOLEAN NOT NULL DEFAULT FALSE",
+        "track_focus_loss": "BOOLEAN NOT NULL DEFAULT TRUE",
+    }
+    with engine.begin() as connection:
+        for column_name, definition in security_columns.items():
+            if column_name in existing_columns:
+                continue
+            connection.execute(text(f"ALTER TABLE portal_exams ADD COLUMN {column_name} {definition}"))

@@ -20,6 +20,11 @@ class Exam(Base):
     description: Mapped[str] = mapped_column(Text, nullable=False)
     duration_minutes: Mapped[int] = mapped_column(Integer, nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    block_clipboard: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    block_context_menu: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    block_inspect_shortcuts: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    enforce_fullscreen: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    track_focus_loss: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     created_by_id: Mapped[int | None] = mapped_column(ForeignKey("portal_users.id"), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
@@ -93,6 +98,11 @@ class ExamAttempt(Base):
     assignment = relationship("ExamAssignment", back_populates="attempts")
     student = relationship("User", back_populates="attempts")
     answers = relationship("AttemptAnswer", back_populates="attempt", cascade="all, delete-orphan")
+    security_incidents = relationship(
+        "SecurityIncident",
+        back_populates="attempt",
+        cascade="all, delete-orphan",
+    )
 
 
 class AttemptAnswer(Base):
@@ -107,3 +117,23 @@ class AttemptAnswer(Base):
 
     attempt = relationship("ExamAttempt", back_populates="answers")
     question = relationship("ExamQuestion", back_populates="answers")
+
+
+class SecurityIncident(Base):
+    __tablename__ = "security_incidents"
+
+    id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    attempt_id: Mapped[int] = mapped_column(ForeignKey("exam_attempts.id", ondelete="CASCADE"), index=True)
+    student_id: Mapped[int] = mapped_column(ForeignKey("portal_users.id", ondelete="CASCADE"), index=True)
+    exam_id: Mapped[int] = mapped_column(ForeignKey("portal_exams.id", ondelete="CASCADE"), index=True)
+    incident_type: Mapped[str] = mapped_column(String(80), nullable=False)
+    detail: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    occurred_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        nullable=False,
+    )
+
+    attempt = relationship("ExamAttempt", back_populates="security_incidents")
+    student = relationship("User")
+    exam = relationship("Exam")
