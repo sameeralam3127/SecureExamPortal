@@ -158,6 +158,31 @@ docker push sameeralam3127/secure-exam-backend:latest
 docker push sameeralam3127/secure-exam-frontend:latest
 ```
 
+## GitHub Packages and Releases
+
+Docker images are published to GitHub Container Registry by the `Build and Publish Docker Images`
+workflow.
+
+Published package names:
+
+```text
+ghcr.io/sameeralam3127/secure-exam-backend
+ghcr.io/sameeralam3127/secure-exam-frontend
+```
+
+Publishing rules:
+
+- Push to `main` publishes `latest`, `main`, and `sha-*` image tags.
+- Push a version tag like `v1.0.0` to publish versioned images and create a GitHub Release.
+- Publishing a GitHub Release also runs the Docker image workflow.
+
+Create a release build:
+
+```bash
+git tag v1.0.0
+git push origin v1.0.0
+```
+
 ## API Surface
 
 Main versioned endpoints:
