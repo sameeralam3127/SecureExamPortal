@@ -6,10 +6,18 @@ from sqlalchemy.orm import Session, selectinload
 
 from app.extensions.db import get_db
 from app.extensions.mail import send_assignment_email
-from app.models.exam import AttemptStatus, Exam, ExamAssignment, ExamAttempt, ExamQuestion
+from app.models.exam import AttemptStatus, Exam, ExamAssignment, ExamAttempt, ExamQuestion, SecurityIncident
 from app.models.user import User, UserRole
 from app.modules.auth.dependencies import require_admin
-from app.schemas.exam import AssignmentCreate, AssignmentRead, BulkExamCreate, DashboardStats, ExamCreate, ExamRead
+from app.schemas.exam import (
+    AssignmentCreate,
+    AssignmentRead,
+    BulkExamCreate,
+    DashboardStats,
+    ExamCreate,
+    ExamRead,
+    SecurityIncidentRead,
+)
 from app.schemas.user import BulkUserCreate, UserCreate, UserRead
 from app.utils.security import hash_password
 
@@ -154,6 +162,11 @@ def create_exam(
         title=payload.title,
         description=payload.description,
         duration_minutes=payload.duration_minutes,
+        block_clipboard=payload.block_clipboard,
+        block_context_menu=payload.block_context_menu,
+        block_inspect_shortcuts=payload.block_inspect_shortcuts,
+        enforce_fullscreen=payload.enforce_fullscreen,
+        track_focus_loss=payload.track_focus_loss,
         created_by_id=current_user.id,
         questions=[ExamQuestion(**question.model_dump()) for question in payload.questions],
     )
@@ -174,6 +187,11 @@ def create_exams_bulk(
             title=exam.title,
             description=exam.description,
             duration_minutes=exam.duration_minutes,
+            block_clipboard=exam.block_clipboard,
+            block_context_menu=exam.block_context_menu,
+            block_inspect_shortcuts=exam.block_inspect_shortcuts,
+            enforce_fullscreen=exam.enforce_fullscreen,
+            track_focus_loss=exam.track_focus_loss,
             created_by_id=current_user.id,
             questions=[ExamQuestion(**question.model_dump()) for question in exam.questions],
         )
@@ -265,3 +283,31 @@ def list_assignments(
             )
         )
     return result
+
+
+@router.get("/security-incidents", response_model=list[SecurityIncidentRead])
+def list_security_incidents(
+    _: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+) -> list[SecurityIncidentRead]:
+    incidents = db.scalars(
+        select(SecurityIncident)
+        .options(selectinload(SecurityIncident.student), selectinload(SecurityIncident.exam))
+        .order_by(desc(SecurityIncident.occurred_at), desc(SecurityIncident.id))
+        .limit(100)
+    ).all()
+
+    return [
+        SecurityIncidentRead(
+            id=incident.id,
+            attempt_id=incident.attempt_id,
+            student_id=incident.student_id,
+            exam_id=incident.exam_id,
+            incident_type=incident.incident_type,
+            detail=incident.detail,
+            occurred_at=incident.occurred_at,
+            student_name=incident.student.full_name if incident.student else None,
+            exam_title=incident.exam.title if incident.exam else None,
+        )
+        for incident in incidents
+    ]

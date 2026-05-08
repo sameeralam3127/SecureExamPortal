@@ -35,6 +35,11 @@ class ExamCreate(BaseModel):
     title: str = Field(min_length=3, max_length=180)
     description: str = Field(min_length=5)
     duration_minutes: int = Field(gt=0, le=600)
+    block_clipboard: bool = True
+    block_context_menu: bool = True
+    block_inspect_shortcuts: bool = True
+    enforce_fullscreen: bool = False
+    track_focus_loss: bool = True
     questions: list[QuestionCreate] = Field(min_length=1)
 
 
@@ -48,6 +53,11 @@ class ExamRead(BaseModel):
     description: str
     duration_minutes: int
     is_active: bool
+    block_clipboard: bool
+    block_context_menu: bool
+    block_inspect_shortcuts: bool
+    enforce_fullscreen: bool
+    track_focus_loss: bool
     created_at: datetime
     questions: list[AdminQuestionRead] = []
 
@@ -103,6 +113,11 @@ class ExamStartResponse(BaseModel):
     title: str
     description: str
     duration_minutes: int
+    block_clipboard: bool
+    block_context_menu: bool
+    block_inspect_shortcuts: bool
+    enforce_fullscreen: bool
+    track_focus_loss: bool
     started_at: datetime
     question_count: int
     current_question_index: int
@@ -122,6 +137,25 @@ class AttemptResult(BaseModel):
     percentage: float
     status: AttemptStatus
     submitted_at: datetime | None = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class SecurityIncidentCreate(BaseModel):
+    incident_type: str = Field(min_length=3, max_length=80)
+    detail: str = Field(default="", max_length=1000)
+
+
+class SecurityIncidentRead(BaseModel):
+    id: int
+    attempt_id: int
+    student_id: int
+    exam_id: int
+    incident_type: str
+    detail: str
+    occurred_at: datetime
+    student_name: str | None = None
+    exam_title: str | None = None
 
     model_config = ConfigDict(from_attributes=True)
 

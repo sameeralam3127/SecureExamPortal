@@ -20,6 +20,11 @@ const examBulkTemplate = JSON.stringify(
         title: 'Computer Basics',
         description: 'Introductory MCQ exam',
         duration_minutes: 20,
+        block_clipboard: true,
+        block_context_menu: true,
+        block_inspect_shortcuts: true,
+        enforce_fullscreen: false,
+        track_focus_loss: true,
         questions: [
           {
             question_text: 'CPU stands for?',
@@ -57,6 +62,7 @@ function App({ route = '/login', onNavigate = () => {} }) {
   const [students, setStudents] = useState([])
   const [exams, setExams] = useState([])
   const [assignments, setAssignments] = useState([])
+  const [securityIncidents, setSecurityIncidents] = useState([])
   const [studentForm, setStudentForm] = useState({
     full_name: '',
     username: '',
@@ -69,6 +75,11 @@ function App({ route = '/login', onNavigate = () => {} }) {
     title: '',
     description: '',
     duration_minutes: 30,
+    block_clipboard: true,
+    block_context_menu: true,
+    block_inspect_shortcuts: true,
+    enforce_fullscreen: false,
+    track_focus_loss: true,
     questions: [{ ...defaultQuestion }],
   })
   const [bulkExamsText, setBulkExamsText] = useState(examBulkTemplate)
@@ -83,6 +94,7 @@ function App({ route = '/login', onNavigate = () => {} }) {
   const [isReviewMode, setIsReviewMode] = useState(false)
   const [autosaveState, setAutosaveState] = useState('')
   const [secondsLeft, setSecondsLeft] = useState(0)
+  const [securityWarning, setSecurityWarning] = useState('')
 
   const authHeaders = useMemo(
     () => ({
@@ -141,16 +153,18 @@ function App({ route = '/login', onNavigate = () => {} }) {
   }
 
   const loadAdminData = async () => {
-    const [statsData, studentsData, examsData, assignmentData] = await Promise.all([
+    const [statsData, studentsData, examsData, assignmentData, incidentData] = await Promise.all([
       apiRequest('/api/v1/admin/dashboard'),
       apiRequest('/api/v1/admin/students'),
       apiRequest('/api/v1/admin/exams'),
       apiRequest('/api/v1/admin/assignments'),
+      apiRequest('/api/v1/admin/security-incidents'),
     ])
     setAdminStats(statsData)
     setStudents(studentsData)
     setExams(examsData)
     setAssignments(assignmentData)
+    setSecurityIncidents(incidentData)
   }
 
   const loadStudentData = async () => {
@@ -201,6 +215,86 @@ function App({ route = '/login', onNavigate = () => {} }) {
       submitExam()
     }
   }, [secondsLeft])
+
+  useEffect(() => {
+    if (!liveExam) return
+
+    const logIncident = (incidentType, detail) => {
+      setSecurityWarning(detail)
+      apiRequest(`/api/v1/student/attempts/${liveExam.attempt_id}/security-incidents`, {
+        method: 'POST',
+        body: JSON.stringify({ incident_type: incidentType, detail }),
+      }).catch((error) => setAutosaveState(`Security log failed: ${error.message}`))
+    }
+
+    const blockEvent = (event, incidentType, detail) => {
+      event.preventDefault()
+      logIncident(incidentType, detail)
+    }
+
+    const handleClipboard = (event) => {
+      if (liveExam.block_clipboard) {
+        blockEvent(event, event.type, `${event.type} was blocked during the live exam.`)
+      }
+    }
+
+    const handleContextMenu = (event) => {
+      if (liveExam.block_context_menu) {
+        blockEvent(event, 'context_menu', 'Right-click was blocked during the live exam.')
+      }
+    }
+
+    const handleKeyDown = (event) => {
+      if (!liveExam.block_inspect_shortcuts) return
+      const key = event.key.toLowerCase()
+      const isInspectShortcut =
+        event.key === 'F12' ||
+        (event.ctrlKey && event.shiftKey && ['i', 'j', 'c'].includes(key)) ||
+        (event.metaKey && event.altKey && ['i', 'j', 'c'].includes(key)) ||
+        ((event.ctrlKey || event.metaKey) && key === 'u')
+      if (isInspectShortcut) {
+        blockEvent(event, 'inspect_shortcut', 'Developer-tool shortcut was blocked during the live exam.')
+      }
+    }
+
+    const handleVisibilityChange = () => {
+      if (liveExam.track_focus_loss && document.visibilityState === 'hidden') {
+        logIncident('tab_switch', 'Tab switch or page hide detected during the live exam.')
+      }
+    }
+
+    const handleBlur = () => {
+      if (liveExam.track_focus_loss) {
+        logIncident('window_blur', 'Exam window lost focus during the live exam.')
+      }
+    }
+
+    const handleFullscreenChange = () => {
+      if (liveExam.enforce_fullscreen && !document.fullscreenElement) {
+        logIncident('fullscreen_exit', 'Fullscreen mode was exited during the live exam.')
+      }
+    }
+
+    document.addEventListener('copy', handleClipboard)
+    document.addEventListener('cut', handleClipboard)
+    document.addEventListener('paste', handleClipboard)
+    document.addEventListener('contextmenu', handleContextMenu)
+    document.addEventListener('keydown', handleKeyDown)
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    document.addEventListener('fullscreenchange', handleFullscreenChange)
+    window.addEventListener('blur', handleBlur)
+
+    return () => {
+      document.removeEventListener('copy', handleClipboard)
+      document.removeEventListener('cut', handleClipboard)
+      document.removeEventListener('paste', handleClipboard)
+      document.removeEventListener('contextmenu', handleContextMenu)
+      document.removeEventListener('keydown', handleKeyDown)
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+      document.removeEventListener('fullscreenchange', handleFullscreenChange)
+      window.removeEventListener('blur', handleBlur)
+    }
+  }, [liveExam, authHeaders])
 
   const handleLogin = async (event) => {
     event.preventDefault()
@@ -307,6 +401,11 @@ function App({ route = '/login', onNavigate = () => {} }) {
         title: '',
         description: '',
         duration_minutes: 30,
+        block_clipboard: true,
+        block_context_menu: true,
+        block_inspect_shortcuts: true,
+        enforce_fullscreen: false,
+        track_focus_loss: true,
         questions: [{ ...defaultQuestion }],
       })
       setMessage('Exam created successfully')
@@ -354,6 +453,7 @@ function App({ route = '/login', onNavigate = () => {} }) {
         method: 'POST',
       })
       setLiveExam(data)
+      setSecurityWarning('')
       setAnswers(
         Object.fromEntries(
           (data.saved_answers || []).map((answer) => [answer.question_id, answer.selected_option]),
@@ -364,6 +464,11 @@ function App({ route = '/login', onNavigate = () => {} }) {
       setAutosaveState('')
       setSecondsLeft(data.duration_minutes * 60)
       setActiveTab('exam')
+      if (data.enforce_fullscreen && document.documentElement.requestFullscreen) {
+        document.documentElement.requestFullscreen().catch(() => {
+          setSecurityWarning('Fullscreen is required for this exam. Use the browser prompt to enter fullscreen.')
+        })
+      }
     } catch (error) {
       setMessage(error.message)
     }
@@ -406,6 +511,7 @@ function App({ route = '/login', onNavigate = () => {} }) {
       setMessage(`Exam submitted. Score ${result.score}/${result.total_marks} (${result.percentage}%)`)
       setLiveExam(null)
       setAnswers({})
+      setSecurityWarning('')
       setCurrentQuestionIndex(0)
       setIsReviewMode(false)
       setAutosaveState('')
@@ -569,22 +675,27 @@ function App({ route = '/login', onNavigate = () => {} }) {
     : renderStudentView()
 
   function renderAdminView() {
+    const pendingAssignments = assignments.filter((item) => item.attempt_status !== 'submitted')
+    const completedAssignments = assignments.filter((item) => item.attempt_status === 'submitted')
+    const latestAssignments = assignments.slice(0, 5)
+    const latestIncidents = securityIncidents.slice(0, 4)
+
     return (
       <main className="portal-page">
-        {renderTopbar(['dashboard', 'exams', 'users', 'reports'])}
+        {renderTopbar(['dashboard', 'exams', 'assignments', 'users', 'reports'])}
         <section className="welcome-banner">
           <div>
-            <h1>Welcome, {session.user.full_name}!</h1>
-            <p>Here&apos;s what&apos;s happening with your exam portal today.</p>
+            <h1>Admin Dashboard</h1>
+            <p>Monitor exams, assignments, student activity, and security events.</p>
           </div>
-          <span className="prototype-chip">✓ Prototype</span>
+          <span className="role-chip">Admin Console</span>
         </section>
 
         <section className="metric-grid">
-          <MetricCard color="blue" count={adminStats?.total_students || 0} label="Total Students" icon="👥" />
-          <MetricCard color="green" count={adminStats?.total_exams || 0} label="Total Exams" icon="📄" />
-          <MetricCard color="cyan" count={adminStats?.total_assignments || 0} label="Active Exams" icon="✓" />
-          <MetricCard color="orange" count={adminStats?.completed_attempts || 0} label="Total Results" icon="📊" />
+          <MetricCard color="blue" count={adminStats?.total_students || 0} label="Students" icon="ST" />
+          <MetricCard color="green" count={adminStats?.total_exams || 0} label="Exams" icon="EX" />
+          <MetricCard color="cyan" count={pendingAssignments.length} label="Pending Assignments" icon="PA" />
+          <MetricCard color="orange" count={adminStats?.completed_attempts || 0} label="Submitted Attempts" icon="SA" />
         </section>
 
         {message ? <div className="notice-bar">{message}</div> : null}
@@ -601,32 +712,66 @@ function App({ route = '/login', onNavigate = () => {} }) {
             <button className="action-btn cyan" onClick={() => setActiveTab('reports')} type="button">
               View Reports
             </button>
-            <button className="action-btn yellow" onClick={() => setActiveTab('exams')} type="button">
-              Manage Exams
+            <button className="action-btn yellow" onClick={() => setActiveTab('assignments')} type="button">
+              Assign Exam
             </button>
           </div>
         </section>
 
         {activeTab === 'dashboard' && (
-          <section className="three-grid">
-            <MiniCard
-              title="Upcoming Exams"
-              text={`${assignments.filter((item) => item.attempt_status !== 'submitted').length} pending assigned exams.`}
-              buttonText="View Schedule"
-              onClick={() => setActiveTab('exams')}
-            />
-            <MiniCard
-              title="Previous Results"
-              text={`Average result score is ${adminStats?.average_score || 0}%.`}
-              buttonText="View Results"
-              onClick={() => setActiveTab('reports')}
-            />
-            <MiniCard
-              title="Profile"
-              text={`Logged in as ${session.user.username}.`}
-              buttonText="Manage Users"
-              onClick={() => setActiveTab('users')}
-            />
+          <section className="dashboard-grid">
+            <article className="white-panel dashboard-panel">
+              <h2>Exam Operations</h2>
+              <div className="status-list">
+                <div>
+                  <span>Pending assignments</span>
+                  <strong>{pendingAssignments.length}</strong>
+                </div>
+                <div>
+                  <span>Completed assignments</span>
+                  <strong>{completedAssignments.length}</strong>
+                </div>
+                <div>
+                  <span>Average score</span>
+                  <strong>{adminStats?.average_score || 0}%</strong>
+                </div>
+              </div>
+            </article>
+            <article className="white-panel dashboard-panel">
+              <h2>Recent Assignments</h2>
+              <div className="list-stack compact-list">
+                {latestAssignments.length ? (
+                  latestAssignments.map((assignment) => (
+                    <div className="row-card" key={`dash-assignment-${assignment.id}`}>
+                      <strong>{assignment.exam_title}</strong>
+                      <p>
+                        {assignment.student_name} | {assignment.attempt_status || 'pending'} | Score{' '}
+                        {assignment.latest_score ?? '--'}
+                      </p>
+                    </div>
+                  ))
+                ) : (
+                  <p className="helper-text">No assignments created yet.</p>
+                )}
+              </div>
+            </article>
+            <article className="white-panel dashboard-panel">
+              <h2>Security Activity</h2>
+              <div className="list-stack compact-list">
+                {latestIncidents.length ? (
+                  latestIncidents.map((incident) => (
+                    <div className="row-card" key={`dash-incident-${incident.id}`}>
+                      <strong>{incident.incident_type.replaceAll('_', ' ')}</strong>
+                      <p>
+                        {incident.student_name || 'Student'} | {incident.exam_title || 'Exam'}
+                      </p>
+                    </div>
+                  ))
+                ) : (
+                  <p className="helper-text">No security incidents logged.</p>
+                )}
+              </div>
+            </article>
           </section>
         )}
 
@@ -713,6 +858,62 @@ function App({ route = '/login', onNavigate = () => {} }) {
                     setExamForm((current) => ({ ...current, description: event.target.value }))
                   }
                 />
+                <div className="security-policy-box">
+                  <strong>Security Policies</strong>
+                  <label>
+                    <input
+                      type="checkbox"
+                      checked={examForm.block_clipboard}
+                      onChange={(event) =>
+                        setExamForm((current) => ({ ...current, block_clipboard: event.target.checked }))
+                      }
+                    />
+                    Block copy, paste, and cut
+                  </label>
+                  <label>
+                    <input
+                      type="checkbox"
+                      checked={examForm.block_context_menu}
+                      onChange={(event) =>
+                        setExamForm((current) => ({ ...current, block_context_menu: event.target.checked }))
+                      }
+                    />
+                    Block right-click menu
+                  </label>
+                  <label>
+                    <input
+                      type="checkbox"
+                      checked={examForm.block_inspect_shortcuts}
+                      onChange={(event) =>
+                        setExamForm((current) => ({
+                          ...current,
+                          block_inspect_shortcuts: event.target.checked,
+                        }))
+                      }
+                    />
+                    Block inspect/developer shortcuts
+                  </label>
+                  <label>
+                    <input
+                      type="checkbox"
+                      checked={examForm.track_focus_loss}
+                      onChange={(event) =>
+                        setExamForm((current) => ({ ...current, track_focus_loss: event.target.checked }))
+                      }
+                    />
+                    Log tab switches and window focus loss
+                  </label>
+                  <label>
+                    <input
+                      type="checkbox"
+                      checked={examForm.enforce_fullscreen}
+                      onChange={(event) =>
+                        setExamForm((current) => ({ ...current, enforce_fullscreen: event.target.checked }))
+                      }
+                    />
+                    Require fullscreen during exam
+                  </label>
+                </div>
                 {examForm.questions.map((question, index) => (
                   <div className="question-card" key={`q-${index + 1}`}>
                     <input
@@ -799,7 +1000,7 @@ function App({ route = '/login', onNavigate = () => {} }) {
           </section>
         )}
 
-        {activeTab === 'reports' && (
+        {activeTab === 'assignments' && (
           <section className="two-grid">
             <article className="white-panel">
               <h2>Assign Exam</h2>
@@ -836,7 +1037,7 @@ function App({ route = '/login', onNavigate = () => {} }) {
               </form>
             </article>
             <article className="white-panel">
-              <h2>Assignment & Score Report</h2>
+              <h2>Current Assignments</h2>
               <div className="list-stack">
                 {assignments.map((assignment) => (
                   <div className="row-card" key={assignment.id}>
@@ -847,6 +1048,44 @@ function App({ route = '/login', onNavigate = () => {} }) {
                     </p>
                   </div>
                 ))}
+              </div>
+            </article>
+          </section>
+        )}
+
+        {activeTab === 'reports' && (
+          <section className="two-grid">
+            <article className="white-panel">
+              <h2>Assignment & Score Report</h2>
+              <div className="list-stack">
+                {assignments.map((assignment) => (
+                  <div className="row-card" key={`report-${assignment.id}`}>
+                    <strong>{assignment.exam_title}</strong>
+                    <p>
+                      {assignment.student_name} | {assignment.attempt_status || 'pending'} | Score{' '}
+                      {assignment.latest_score ?? '--'}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </article>
+            <article className="white-panel wide-panel">
+              <h2>Security Incident Report</h2>
+              <div className="list-stack">
+                {securityIncidents.length ? (
+                  securityIncidents.map((incident) => (
+                    <div className="row-card" key={incident.id}>
+                      <strong>{incident.incident_type.replaceAll('_', ' ')}</strong>
+                      <p>
+                        {incident.student_name || 'Student'} | {incident.exam_title || 'Exam'} |{' '}
+                        {new Date(incident.occurred_at).toLocaleString()}
+                      </p>
+                      <p>{incident.detail}</p>
+                    </div>
+                  ))
+                ) : (
+                  <p className="helper-text">No security incidents logged yet.</p>
+                )}
               </div>
             </article>
           </section>
@@ -864,14 +1103,14 @@ function App({ route = '/login', onNavigate = () => {} }) {
             <h1>Welcome, {session.user.full_name}!</h1>
             <p>Track assigned exams, take live assessments, and review your scores.</p>
           </div>
-          <span className="prototype-chip">Student Portal</span>
+          <span className="role-chip">Student Portal</span>
         </section>
 
         <section className="metric-grid">
-          <MetricCard color="blue" count={studentStats?.assigned_exams || 0} label="Assigned Exams" icon="📘" />
-          <MetricCard color="green" count={studentStats?.completed_exams || 0} label="Completed" icon="✅" />
-          <MetricCard color="cyan" count={studentStats?.pending_exams || 0} label="Pending" icon="⏳" />
-          <MetricCard color="orange" count={`${studentStats?.average_score || 0}%`} label="Average Score" icon="📊" />
+          <MetricCard color="blue" count={studentStats?.assigned_exams || 0} label="Assigned Exams" icon="AE" />
+          <MetricCard color="green" count={studentStats?.completed_exams || 0} label="Completed" icon="CO" />
+          <MetricCard color="cyan" count={studentStats?.pending_exams || 0} label="Pending" icon="PE" />
+          <MetricCard color="orange" count={`${studentStats?.average_score || 0}%`} label="Average Score" icon="AS" />
         </section>
 
         {message ? <div className="notice-bar">{message}</div> : null}
@@ -914,6 +1153,13 @@ function App({ route = '/login', onNavigate = () => {} }) {
                   <span className="autosave-text">{autosaveState || 'Autosave ready'}</span>
                 </div>
               </div>
+              <div className="security-policy-strip">
+                <span>{liveExam.block_clipboard ? 'Clipboard blocked' : 'Clipboard allowed'}</span>
+                <span>{liveExam.block_context_menu ? 'Right-click blocked' : 'Right-click allowed'}</span>
+                <span>{liveExam.track_focus_loss ? 'Focus monitored' : 'Focus not monitored'}</span>
+                <span>{liveExam.enforce_fullscreen ? 'Fullscreen required' : 'Fullscreen optional'}</span>
+              </div>
+              {securityWarning ? <div className="security-warning">{securityWarning}</div> : null}
               <div className="question-progress-row">
                 {liveExam.questions.map((question, index) => (
                   <button
@@ -1082,15 +1328,16 @@ function App({ route = '/login', onNavigate = () => {} }) {
                 }
               }}
             >
-              {tab === 'dashboard' && '◔ Dashboard'}
-              {tab === 'exams' && '📄 Exams'}
-              {tab === 'users' && '👥 Users'}
-              {tab === 'reports' && '📈 Reports'}
-              {tab === 'exam' && '📝 Exams'}
+              {tab === 'dashboard' && 'Dashboard'}
+              {tab === 'exams' && 'Exams'}
+              {tab === 'assignments' && 'Assignments'}
+              {tab === 'users' && 'Users'}
+              {tab === 'reports' && 'Reports'}
+              {tab === 'exam' && 'Exams'}
             </button>
           ))}
           <button type="button" className="logout-btn" onClick={logout}>
-            ⟲ Logout
+            Logout
           </button>
         </nav>
       </header>
