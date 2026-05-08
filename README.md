@@ -10,6 +10,33 @@ Production-ready online examination portal with a FastAPI backend, PostgreSQL da
 - Auth: Password login, role-based access, optional Google sign-in
 - Notifications: Optional SMTP assignment email
 
+## Repository Layout
+
+```text
+SecureExamPortal/
+├── backend/
+│   ├── app/
+│   │   ├── config/
+│   │   ├── extensions/
+│   │   ├── models/
+│   │   ├── modules/
+│   │   ├── repositories/
+│   │   ├── schemas/
+│   │   └── utils/
+│   ├── docker/Dockerfile
+│   ├── manage.py
+│   ├── requirements.txt
+│   └── wsgi.py
+├── frontend/
+│   ├── src/
+│   ├── Dockerfile
+│   ├── nginx.conf
+│   └── package.json
+├── docker-compose.yml
+├── docker-compose.dev.yml
+└── .env.example
+```
+
 ## Production Configuration
 
 Copy `.env.example` to `.env` and replace every production placeholder before starting containers.
