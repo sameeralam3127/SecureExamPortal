@@ -5,7 +5,7 @@ from sqlalchemy import desc, func, select
 from sqlalchemy.orm import Session, selectinload
 
 from app.extensions.db import get_db
-from app.models.exam import AttemptAnswer, AttemptStatus, Exam, ExamAssignment, ExamAttempt
+from app.models.exam import AttemptAnswer, AttemptStatus, Exam, ExamAssignment, ExamAttempt, SecurityIncident
 from app.models.user import User
 from app.modules.auth.dependencies import require_student
 from app.schemas.exam import (
@@ -16,6 +16,8 @@ from app.schemas.exam import (
     AttemptSubmitRequest,
     ExamStartResponse,
     QuestionRead,
+    SecurityIncidentCreate,
+    SecurityIncidentRead,
     StudentDashboard,
 )
 
@@ -149,11 +151,61 @@ def start_exam(
         title=assignment.exam.title,
         description=assignment.exam.description,
         duration_minutes=assignment.exam.duration_minutes,
+        block_clipboard=assignment.exam.block_clipboard,
+        block_context_menu=assignment.exam.block_context_menu,
+        block_inspect_shortcuts=assignment.exam.block_inspect_shortcuts,
+        enforce_fullscreen=assignment.exam.enforce_fullscreen,
+        track_focus_loss=assignment.exam.track_focus_loss,
         started_at=attempt.started_at,
         question_count=len(assignment.exam.questions),
         current_question_index=next_unanswered_index,
         saved_answers=saved_answers,
         questions=[QuestionRead.model_validate(question) for question in assignment.exam.questions],
+    )
+
+
+@router.post(
+    "/attempts/{attempt_id}/security-incidents",
+    response_model=SecurityIncidentRead,
+    status_code=status.HTTP_201_CREATED,
+)
+def log_security_incident(
+    attempt_id: int,
+    payload: SecurityIncidentCreate,
+    current_user: User = Depends(require_student),
+    db: Session = Depends(get_db),
+) -> SecurityIncidentRead:
+    attempt = db.scalar(
+        select(ExamAttempt)
+        .where(ExamAttempt.id == attempt_id, ExamAttempt.student_id == current_user.id)
+        .options(selectinload(ExamAttempt.assignment).selectinload(ExamAssignment.exam))
+    )
+    if attempt is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Attempt not found")
+    if attempt.status == AttemptStatus.submitted:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Attempt already submitted")
+
+    incident = SecurityIncident(
+        attempt_id=attempt.id,
+        student_id=current_user.id,
+        exam_id=attempt.assignment.exam.id,
+        incident_type=payload.incident_type,
+        detail=payload.detail,
+    )
+    db.add(incident)
+    db.commit()
+    db.refresh(incident)
+
+    return SecurityIncidentRead(
+        id=incident.id,
+        attempt_id=incident.attempt_id,
+        student_id=incident.student_id,
+        exam_id=incident.exam_id,
+        incident_type=incident.incident_type,
+        detail=incident.detail,
+        occurred_at=incident.occurred_at,
+        student_name=current_user.full_name,
+        exam_title=attempt.assignment.exam.title,
     )
 
 
