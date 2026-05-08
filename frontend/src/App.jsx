@@ -675,22 +675,27 @@ function App({ route = '/login', onNavigate = () => {} }) {
     : renderStudentView()
 
   function renderAdminView() {
+    const pendingAssignments = assignments.filter((item) => item.attempt_status !== 'submitted')
+    const completedAssignments = assignments.filter((item) => item.attempt_status === 'submitted')
+    const latestAssignments = assignments.slice(0, 5)
+    const latestIncidents = securityIncidents.slice(0, 4)
+
     return (
       <main className="portal-page">
-        {renderTopbar(['dashboard', 'exams', 'users', 'reports'])}
+        {renderTopbar(['dashboard', 'exams', 'assignments', 'users', 'reports'])}
         <section className="welcome-banner">
           <div>
-            <h1>Welcome, {session.user.full_name}!</h1>
-            <p>Here&apos;s what&apos;s happening with your exam portal today.</p>
+            <h1>Admin Dashboard</h1>
+            <p>Monitor exams, assignments, student activity, and security events.</p>
           </div>
-          <span className="prototype-chip">✓ Prototype</span>
+          <span className="role-chip">Admin Console</span>
         </section>
 
         <section className="metric-grid">
-          <MetricCard color="blue" count={adminStats?.total_students || 0} label="Total Students" icon="👥" />
-          <MetricCard color="green" count={adminStats?.total_exams || 0} label="Total Exams" icon="📄" />
-          <MetricCard color="cyan" count={adminStats?.total_assignments || 0} label="Active Exams" icon="✓" />
-          <MetricCard color="orange" count={adminStats?.completed_attempts || 0} label="Total Results" icon="📊" />
+          <MetricCard color="blue" count={adminStats?.total_students || 0} label="Students" icon="ST" />
+          <MetricCard color="green" count={adminStats?.total_exams || 0} label="Exams" icon="EX" />
+          <MetricCard color="cyan" count={pendingAssignments.length} label="Pending Assignments" icon="PA" />
+          <MetricCard color="orange" count={adminStats?.completed_attempts || 0} label="Submitted Attempts" icon="SA" />
         </section>
 
         {message ? <div className="notice-bar">{message}</div> : null}
@@ -707,32 +712,66 @@ function App({ route = '/login', onNavigate = () => {} }) {
             <button className="action-btn cyan" onClick={() => setActiveTab('reports')} type="button">
               View Reports
             </button>
-            <button className="action-btn yellow" onClick={() => setActiveTab('exams')} type="button">
-              Manage Exams
+            <button className="action-btn yellow" onClick={() => setActiveTab('assignments')} type="button">
+              Assign Exam
             </button>
           </div>
         </section>
 
         {activeTab === 'dashboard' && (
-          <section className="three-grid">
-            <MiniCard
-              title="Upcoming Exams"
-              text={`${assignments.filter((item) => item.attempt_status !== 'submitted').length} pending assigned exams.`}
-              buttonText="View Schedule"
-              onClick={() => setActiveTab('exams')}
-            />
-            <MiniCard
-              title="Previous Results"
-              text={`Average result score is ${adminStats?.average_score || 0}%.`}
-              buttonText="View Results"
-              onClick={() => setActiveTab('reports')}
-            />
-            <MiniCard
-              title="Profile"
-              text={`Logged in as ${session.user.username}.`}
-              buttonText="Manage Users"
-              onClick={() => setActiveTab('users')}
-            />
+          <section className="dashboard-grid">
+            <article className="white-panel dashboard-panel">
+              <h2>Exam Operations</h2>
+              <div className="status-list">
+                <div>
+                  <span>Pending assignments</span>
+                  <strong>{pendingAssignments.length}</strong>
+                </div>
+                <div>
+                  <span>Completed assignments</span>
+                  <strong>{completedAssignments.length}</strong>
+                </div>
+                <div>
+                  <span>Average score</span>
+                  <strong>{adminStats?.average_score || 0}%</strong>
+                </div>
+              </div>
+            </article>
+            <article className="white-panel dashboard-panel">
+              <h2>Recent Assignments</h2>
+              <div className="list-stack compact-list">
+                {latestAssignments.length ? (
+                  latestAssignments.map((assignment) => (
+                    <div className="row-card" key={`dash-assignment-${assignment.id}`}>
+                      <strong>{assignment.exam_title}</strong>
+                      <p>
+                        {assignment.student_name} | {assignment.attempt_status || 'pending'} | Score{' '}
+                        {assignment.latest_score ?? '--'}
+                      </p>
+                    </div>
+                  ))
+                ) : (
+                  <p className="helper-text">No assignments created yet.</p>
+                )}
+              </div>
+            </article>
+            <article className="white-panel dashboard-panel">
+              <h2>Security Activity</h2>
+              <div className="list-stack compact-list">
+                {latestIncidents.length ? (
+                  latestIncidents.map((incident) => (
+                    <div className="row-card" key={`dash-incident-${incident.id}`}>
+                      <strong>{incident.incident_type.replaceAll('_', ' ')}</strong>
+                      <p>
+                        {incident.student_name || 'Student'} | {incident.exam_title || 'Exam'}
+                      </p>
+                    </div>
+                  ))
+                ) : (
+                  <p className="helper-text">No security incidents logged.</p>
+                )}
+              </div>
+            </article>
           </section>
         )}
 
@@ -961,7 +1000,7 @@ function App({ route = '/login', onNavigate = () => {} }) {
           </section>
         )}
 
-        {activeTab === 'reports' && (
+        {activeTab === 'assignments' && (
           <section className="two-grid">
             <article className="white-panel">
               <h2>Assign Exam</h2>
@@ -998,10 +1037,29 @@ function App({ route = '/login', onNavigate = () => {} }) {
               </form>
             </article>
             <article className="white-panel">
-              <h2>Assignment & Score Report</h2>
+              <h2>Current Assignments</h2>
               <div className="list-stack">
                 {assignments.map((assignment) => (
                   <div className="row-card" key={assignment.id}>
+                    <strong>{assignment.exam_title}</strong>
+                    <p>
+                      {assignment.student_name} | {assignment.attempt_status || 'pending'} | Score{' '}
+                      {assignment.latest_score ?? '--'}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </article>
+          </section>
+        )}
+
+        {activeTab === 'reports' && (
+          <section className="two-grid">
+            <article className="white-panel">
+              <h2>Assignment & Score Report</h2>
+              <div className="list-stack">
+                {assignments.map((assignment) => (
+                  <div className="row-card" key={`report-${assignment.id}`}>
                     <strong>{assignment.exam_title}</strong>
                     <p>
                       {assignment.student_name} | {assignment.attempt_status || 'pending'} | Score{' '}
@@ -1045,14 +1103,14 @@ function App({ route = '/login', onNavigate = () => {} }) {
             <h1>Welcome, {session.user.full_name}!</h1>
             <p>Track assigned exams, take live assessments, and review your scores.</p>
           </div>
-          <span className="prototype-chip">Student Portal</span>
+          <span className="role-chip">Student Portal</span>
         </section>
 
         <section className="metric-grid">
-          <MetricCard color="blue" count={studentStats?.assigned_exams || 0} label="Assigned Exams" icon="📘" />
-          <MetricCard color="green" count={studentStats?.completed_exams || 0} label="Completed" icon="✅" />
-          <MetricCard color="cyan" count={studentStats?.pending_exams || 0} label="Pending" icon="⏳" />
-          <MetricCard color="orange" count={`${studentStats?.average_score || 0}%`} label="Average Score" icon="📊" />
+          <MetricCard color="blue" count={studentStats?.assigned_exams || 0} label="Assigned Exams" icon="AE" />
+          <MetricCard color="green" count={studentStats?.completed_exams || 0} label="Completed" icon="CO" />
+          <MetricCard color="cyan" count={studentStats?.pending_exams || 0} label="Pending" icon="PE" />
+          <MetricCard color="orange" count={`${studentStats?.average_score || 0}%`} label="Average Score" icon="AS" />
         </section>
 
         {message ? <div className="notice-bar">{message}</div> : null}
@@ -1270,15 +1328,16 @@ function App({ route = '/login', onNavigate = () => {} }) {
                 }
               }}
             >
-              {tab === 'dashboard' && '◔ Dashboard'}
-              {tab === 'exams' && '📄 Exams'}
-              {tab === 'users' && '👥 Users'}
-              {tab === 'reports' && '📈 Reports'}
-              {tab === 'exam' && '📝 Exams'}
+              {tab === 'dashboard' && 'Dashboard'}
+              {tab === 'exams' && 'Exams'}
+              {tab === 'assignments' && 'Assignments'}
+              {tab === 'users' && 'Users'}
+              {tab === 'reports' && 'Reports'}
+              {tab === 'exam' && 'Exams'}
             </button>
           ))}
           <button type="button" className="logout-btn" onClick={logout}>
-            ⟲ Logout
+            Logout
           </button>
         </nav>
       </header>
