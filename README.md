@@ -1,6 +1,22 @@
 # Secure Exam Portal
 
-Production-ready online examination portal with a FastAPI backend, PostgreSQL database, and React frontend.
+Production-ready online examination portal with a FastAPI backend, PostgreSQL database, and React frontend. Secure Exam Portal supports role-based administration, student exam delivery, assignment tracking, autosaved answers, score history, and configurable exam security controls.
+
+## Features
+
+- Admin dashboard for students, exams, assignments, score reports, and security activity
+- Student dashboard for assigned exams, live attempts, autosave status, and score history
+- Password authentication with role-based access for admins and students
+- Optional Google sign-in through `VITE_GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_ID`
+- Bulk student upload from CSV-style text
+- Bulk exam upload from JSON
+- Configurable exam security controls:
+  - block copy, paste, and cut
+  - block right-click context menu
+  - block common inspect/developer shortcuts
+  - optionally require fullscreen
+  - track focus loss, tab switches, and fullscreen exits
+- Optional SMTP email notification when an exam is assigned
 
 ## Stack
 
@@ -37,7 +53,7 @@ SecureExamPortal/
 └── .env.example
 ```
 
-## Production Configuration
+## Configuration
 
 Copy `.env.example` to `.env` and replace every production placeholder before starting containers.
 
@@ -62,7 +78,7 @@ INITIAL_ADMIN_FULL_NAME=Portal Administrator
 
 The application does not create seeded users, seeded passwords, or starter exams automatically.
 
-## Run With Docker
+## Run With Docker Compose
 
 Production-style stack built from this repository:
 
@@ -70,14 +86,28 @@ Production-style stack built from this repository:
 docker compose up --build
 ```
 
-Production stack using the published Docker Hub images:
+Development stack with hot reload:
 
 ```bash
-docker pull sameeralam3127/secure-exam-backend:latest
-docker pull sameeralam3127/secure-exam-frontend:latest
+docker compose -f docker-compose.dev.yml up --build
 ```
 
-Create `.env` from `.env.example`, set the required production values, then use the published images in your deployment:
+Local development URLs:
+
+- Frontend: `http://localhost:5173`
+- Backend API: `http://localhost:8001`
+- API docs: `http://localhost:8001/docs`
+
+## Published Docker Images
+
+Published images:
+
+```text
+sameeralam3127/secure-exam-backend:latest
+sameeralam3127/secure-exam-frontend:latest
+```
+
+Create `.env` from `.env.example`, set the required production values, then use the published images in your deployment if you do not want to build locally:
 
 ```yaml
 services:
@@ -123,27 +153,6 @@ volumes:
   postgres_data:
 ```
 
-Development stack with hot reload:
-
-```bash
-docker compose -f docker-compose.dev.yml up --build
-```
-
-Local development URLs:
-
-- Frontend: `http://localhost:5173`
-- Backend API: `http://localhost:8001`
-- API docs: `http://localhost:8001/docs`
-
-## Docker Hub Images
-
-Published images:
-
-```text
-sameeralam3127/secure-exam-backend:latest
-sameeralam3127/secure-exam-frontend:latest
-```
-
 Build images locally:
 
 ```bash
@@ -157,6 +166,38 @@ Push images:
 docker push sameeralam3127/secure-exam-backend:latest
 docker push sameeralam3127/secure-exam-frontend:latest
 ```
+
+## Local Development Without Docker
+
+Backend:
+
+```bash
+cd backend
+pip install -r requirements.txt
+uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+```
+
+Frontend:
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+Set `VITE_API_BASE_URL` for the frontend when the API is not served from the same origin.
+
+## Quality Checks
+
+Frontend:
+
+```bash
+cd frontend
+npm run lint
+npm run build
+```
+
+Backend dependencies are listed in `backend/requirements.txt`. Use the FastAPI docs at `/docs` for manual API validation when running locally.
 
 ## API Surface
 
@@ -173,9 +214,14 @@ Main versioned endpoints:
 /api/v1/admin/exams
 /api/v1/admin/exams/bulk
 /api/v1/admin/assignments
+/api/v1/admin/security-incidents
 /api/v1/student/dashboard
 /api/v1/student/assignments
+/api/v1/student/assignments/{assignment_id}/start
 /api/v1/student/attempts/history
+/api/v1/student/attempts/{attempt_id}/answers
+/api/v1/student/attempts/{attempt_id}/submit
+/api/v1/student/attempts/{attempt_id}/security-incidents
 ```
 
 ## Bulk Upload Formats
@@ -195,6 +241,11 @@ Bulk exams textarea:
       "title": "Exam Title",
       "description": "Exam description",
       "duration_minutes": 30,
+      "block_clipboard": true,
+      "block_context_menu": true,
+      "block_inspect_shortcuts": true,
+      "enforce_fullscreen": false,
+      "track_focus_loss": true,
       "questions": [
         {
           "question_text": "Question text",
@@ -210,3 +261,13 @@ Bulk exams textarea:
   ]
 }
 ```
+
+Security flags are optional in the API schema and default to secure values when omitted.
+
+## Deployment Notes
+
+- Always set a strong `AUTH_SECRET_KEY` in production.
+- Do not deploy with the local development database password.
+- Set `CORS_ORIGINS` to the exact production frontend origins only.
+- Configure SMTP only if assignment notification email is required.
+- Configure Google OAuth only if Google sign-in should be enabled.
