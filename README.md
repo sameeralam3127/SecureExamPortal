@@ -1,22 +1,6 @@
 # Secure Exam Portal
 
-Production-ready online examination portal with a FastAPI backend, PostgreSQL database, and React frontend. Secure Exam Portal supports role-based administration, student exam delivery, assignment tracking, autosaved answers, score history, and configurable exam security controls.
-
-## Features
-
-- Admin dashboard for students, exams, assignments, score reports, and security activity
-- Student dashboard for assigned exams, live attempts, autosave status, and score history
-- Password authentication with role-based access for admins and students
-- Optional Google sign-in through `VITE_GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_ID`
-- Bulk student upload from CSV-style text
-- Bulk exam upload from JSON
-- Configurable exam security controls:
-  - block copy, paste, and cut
-  - block right-click context menu
-  - block common inspect/developer shortcuts
-  - optionally require fullscreen
-  - track focus loss, tab switches, and fullscreen exits
-- Optional SMTP email notification when an exam is assigned
+Production-ready online examination portal with a FastAPI backend, PostgreSQL database, and React frontend.
 
 ## Stack
 
@@ -53,7 +37,7 @@ SecureExamPortal/
 └── .env.example
 ```
 
-## Configuration
+## Production Configuration
 
 Copy `.env.example` to `.env` and replace every production placeholder before starting containers.
 
@@ -78,7 +62,7 @@ INITIAL_ADMIN_FULL_NAME=Portal Administrator
 
 The application does not create seeded users, seeded passwords, or starter exams automatically.
 
-## Run With Docker Compose
+## Run With Docker
 
 Production-style stack built from this repository:
 
@@ -86,28 +70,13 @@ Production-style stack built from this repository:
 docker compose up --build
 ```
 
-Development stack with hot reload:
+Production stack using the published GitHub Packages image:
 
 ```bash
-docker compose -f docker-compose.dev.yml up --build
+docker pull ghcr.io/sameeralam3127/secure-exam-portal:latest
 ```
 
-Local development URLs:
-
-- Frontend: `http://localhost:5173`
-- Backend API: `http://localhost:8001`
-- API docs: `http://localhost:8001/docs`
-
-## Published Docker Images
-
-Published images:
-
-```text
-sameeralam3127/secure-exam-backend:latest
-sameeralam3127/secure-exam-frontend:latest
-```
-
-Create `.env` from `.env.example`, set the required production values, then use the published images in your deployment if you do not want to build locally:
+Create `.env` from `.env.example`, set the required production values, then use the published image in your deployment:
 
 ```yaml
 services:
@@ -120,8 +89,10 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
 
-  backend:
-    image: sameeralam3127/secure-exam-backend:latest
+  app:
+    image: ghcr.io/sameeralam3127/secure-exam-portal:latest
+    ports:
+      - "80:80"
     environment:
       ENVIRONMENT: production
       AUTH_SECRET_KEY: ${AUTH_SECRET_KEY}
@@ -142,62 +113,65 @@ services:
     depends_on:
       - db
 
-  frontend:
-    image: sameeralam3127/secure-exam-frontend:latest
-    ports:
-      - "80:80"
-    depends_on:
-      - backend
-
 volumes:
   postgres_data:
 ```
 
-Build images locally:
+Development stack with hot reload:
 
 ```bash
-docker build -t sameeralam3127/secure-exam-backend:latest -f backend/docker/Dockerfile backend
-docker build -t sameeralam3127/secure-exam-frontend:latest frontend
+docker compose -f docker-compose.dev.yml up --build
 ```
 
-Push images:
+Local development URLs:
+
+- Frontend: `http://localhost:5173`
+- Backend API: `http://localhost:8001`
+- API docs: `http://localhost:8001/docs`
+
+## Docker Image
+
+Published image:
+
+```text
+ghcr.io/sameeralam3127/secure-exam-portal:latest
+```
+
+Build the image locally:
 
 ```bash
-docker push sameeralam3127/secure-exam-backend:latest
-docker push sameeralam3127/secure-exam-frontend:latest
+docker build -t secure-exam-portal:local .
 ```
 
-## Local Development Without Docker
-
-Backend:
+Run the local image:
 
 ```bash
-cd backend
-pip install -r requirements.txt
-uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+docker run --env-file .env -p 80:80 secure-exam-portal:local
 ```
 
-Frontend:
+## GitHub Packages and Releases
+
+Docker images are published to GitHub Container Registry by the `Build and Publish Docker Images`
+workflow.
+
+Published package name:
+
+```text
+ghcr.io/sameeralam3127/secure-exam-portal
+```
+
+Publishing rules:
+
+- Push to `main` publishes `latest`, `main`, and `sha-*` image tags.
+- Push a version tag like `v1.0.0` to publish versioned images and create a GitHub Release.
+- Publishing a GitHub Release also runs the Docker image workflow.
+
+Create a release build:
 
 ```bash
-cd frontend
-npm install
-npm run dev
+git tag v1.0.0
+git push origin v1.0.0
 ```
-
-Set `VITE_API_BASE_URL` for the frontend when the API is not served from the same origin.
-
-## Quality Checks
-
-Frontend:
-
-```bash
-cd frontend
-npm run lint
-npm run build
-```
-
-Backend dependencies are listed in `backend/requirements.txt`. Use the FastAPI docs at `/docs` for manual API validation when running locally.
 
 ## API Surface
 
@@ -214,14 +188,9 @@ Main versioned endpoints:
 /api/v1/admin/exams
 /api/v1/admin/exams/bulk
 /api/v1/admin/assignments
-/api/v1/admin/security-incidents
 /api/v1/student/dashboard
 /api/v1/student/assignments
-/api/v1/student/assignments/{assignment_id}/start
 /api/v1/student/attempts/history
-/api/v1/student/attempts/{attempt_id}/answers
-/api/v1/student/attempts/{attempt_id}/submit
-/api/v1/student/attempts/{attempt_id}/security-incidents
 ```
 
 ## Bulk Upload Formats
@@ -241,11 +210,6 @@ Bulk exams textarea:
       "title": "Exam Title",
       "description": "Exam description",
       "duration_minutes": 30,
-      "block_clipboard": true,
-      "block_context_menu": true,
-      "block_inspect_shortcuts": true,
-      "enforce_fullscreen": false,
-      "track_focus_loss": true,
       "questions": [
         {
           "question_text": "Question text",
@@ -261,13 +225,3 @@ Bulk exams textarea:
   ]
 }
 ```
-
-Security flags are optional in the API schema and default to secure values when omitted.
-
-## Deployment Notes
-
-- Always set a strong `AUTH_SECRET_KEY` in production.
-- Do not deploy with the local development database password.
-- Set `CORS_ORIGINS` to the exact production frontend origins only.
-- Configure SMTP only if assignment notification email is required.
-- Configure Google OAuth only if Google sign-in should be enabled.
