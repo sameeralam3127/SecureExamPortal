@@ -1,16 +1,33 @@
 # Secure Exam Portal
 
-Production-ready online examination portal with a FastAPI backend, PostgreSQL database, and React frontend.
+Secure Exam Portal is a production-ready online examination system for creating,
+assigning, taking, and reviewing MCQ exams. It ships with a FastAPI backend,
+PostgreSQL persistence, a database-backed background worker, an Nginx edge
+proxy, and a Vite React frontend, with Docker Compose workflows for development
+and production-style deployments.
 
-## Stack
+## Features
 
-- Backend: FastAPI, SQLAlchemy, PostgreSQL, Gunicorn/Uvicorn
-- Workers: database-backed background queue for email and report jobs
+- Student registration, password login, bearer-token sessions, and optional Google sign-in.
+- Role-based admin and student dashboards.
+- Admin student management, including bulk student creation.
+- Admin exam authoring, including bulk exam upload and MCQ question banks.
+- Exam assignment workflow with SMTP email jobs processed asynchronously.
+- Submitted-attempt report jobs processed by a database-backed worker queue.
+- Student exam attempts with timer, autosaved answers, submission scoring, and attempt history.
+- Configurable exam security controls for clipboard, context menu, inspect shortcuts, fullscreen, and focus-loss tracking.
+- Admin views for security incidents, queued jobs, and completed reports.
+- Production validation for secrets, database URLs, and CORS origins.
+
+## Tech Stack
+
+- Backend: FastAPI, SQLAlchemy, Pydantic, PostgreSQL, Uvicorn, Gunicorn
+- Worker: database-backed queue for email and report jobs
 - Frontend: React, Vite, Nginx
-- Containers: Docker and Docker Compose
-- Auth: Password login, role-based access, optional Google sign-in
 - Edge: Nginx reverse proxy with forwarded headers
-- Notifications: Optional SMTP assignment email processed asynchronously
+- Auth: Password login, role checks, optional Google Identity Services
+- Containers: Docker and Docker Compose
+- Notifications: Optional SMTP assignment email
 
 ## Repository Layout
 
@@ -29,6 +46,8 @@ SecureExamPortal/
 │   ├── manage.py
 │   ├── requirements.txt
 │   └── wsgi.py
+├── docker/
+│   └── nginx.conf
 ├── frontend/
 │   ├── src/
 │   ├── Dockerfile
@@ -39,34 +58,75 @@ SecureExamPortal/
 └── .env.example
 ```
 
-## Production Configuration
+## Quick Start
 
-Copy `.env.example` to `.env` and replace every production placeholder before starting containers.
+Run the development stack with hot reload:
+
+```bash
+docker compose -f docker-compose.dev.yml up --build
+```
+
+Local URLs:
+
+- Frontend: `http://localhost:5173`
+- Backend API: `http://localhost:8001`
+- Nginx entrypoint: `http://localhost:8080`
+- API docs: `http://localhost:8001/docs`
+
+To bootstrap an admin account in a fresh development database, provide these
+values before starting the stack:
+
+```bash
+INITIAL_ADMIN_USERNAME=admin \
+INITIAL_ADMIN_PASSWORD=change-me \
+INITIAL_ADMIN_EMAIL=admin@example.com \
+docker compose -f docker-compose.dev.yml up --build
+```
+
+Student accounts can also register from the login page. Admin accounts are
+created only through the initial-admin bootstrap path.
+
+## Environment Configuration
+
+Copy `.env.example` to `.env` for production-style runs:
+
+```bash
+cp .env.example .env
+```
 
 Required production values:
 
 ```env
-POSTGRES_PASSWORD=
-DATABASE_URL=
-AUTH_SECRET_KEY=
+POSTGRES_PASSWORD=replace-with-a-strong-database-password
+DATABASE_URL=postgresql+psycopg://secure_exam_user:replace-with-a-strong-database-password@db:5432/secure_exam_portal
+AUTH_SECRET_KEY=replace-with-a-long-random-secret
 CORS_ORIGINS=["https://your-domain.example"]
 FRONTEND_BASE_URL=https://your-domain.example
 ```
 
-Optional first-admin bootstrap for a fresh database:
+Optional integrations, worker settings, and bootstrap values:
 
 ```env
+GOOGLE_CLIENT_ID=
+SMTP_HOST=
+SMTP_PORT=587
+SMTP_USERNAME=
+SMTP_PASSWORD=
+SMTP_FROM_EMAIL=no-reply@secureexamportal.com
+SMTP_USE_TLS=true
+WORKER_POLL_INTERVAL_SECONDS=2
 INITIAL_ADMIN_USERNAME=
 INITIAL_ADMIN_PASSWORD=
 INITIAL_ADMIN_EMAIL=
 INITIAL_ADMIN_FULL_NAME=Portal Administrator
 ```
 
-The application does not create seeded users, seeded passwords, or starter exams automatically.
+In production, the backend rejects the default local secret, local database
+passwords, and localhost CORS origins.
 
-## Run With Docker
+## Production-Style Docker Run
 
-Production-style stack built from this repository:
+Build and run the production-style stack from this repository:
 
 ```bash
 docker compose up --build
@@ -80,81 +140,20 @@ The production Compose stack starts separate services for:
 - `db`: PostgreSQL storage for application data and queued jobs
 - `frontend`: built React assets served by Nginx
 
+The Nginx entrypoint listens on `FRONTEND_PORT`, which defaults to `80`.
+
 Scale API or worker capacity horizontally by adding replicas behind the Nginx entrypoint:
 
 ```bash
 docker compose up --build --scale backend=2 --scale worker=2
 ```
 
-Production stack using the published GitHub Packages image:
+Assignment notifications and submitted-attempt reports are queued in the
+database and processed by the `worker` service. Admins can inspect recent queue
+activity through `/api/v1/admin/jobs` and completed report jobs through
+`/api/v1/admin/reports`.
 
-```bash
-docker pull ghcr.io/sameeralam3127/secure-exam-portal:latest
-```
-
-Create `.env` from `.env.example`, set the required production values, then use the published image in your deployment:
-
-```yaml
-services:
-  db:
-    image: postgres:16-alpine
-    environment:
-      POSTGRES_DB: secure_exam_portal
-      POSTGRES_USER: secure_exam_user
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-
-  app:
-    image: ghcr.io/sameeralam3127/secure-exam-portal:latest
-    ports:
-      - "80:80"
-    environment:
-      ENVIRONMENT: production
-      AUTH_SECRET_KEY: ${AUTH_SECRET_KEY}
-      DATABASE_URL: ${DATABASE_URL}
-      CORS_ORIGINS: ${CORS_ORIGINS}
-      FRONTEND_BASE_URL: ${FRONTEND_BASE_URL}
-      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
-      SMTP_HOST: ${SMTP_HOST:-}
-      SMTP_PORT: ${SMTP_PORT:-587}
-      SMTP_USERNAME: ${SMTP_USERNAME:-}
-      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
-      SMTP_FROM_EMAIL: ${SMTP_FROM_EMAIL:-no-reply@secureexamportal.com}
-      SMTP_USE_TLS: ${SMTP_USE_TLS:-true}
-      INITIAL_ADMIN_USERNAME: ${INITIAL_ADMIN_USERNAME:-}
-      INITIAL_ADMIN_PASSWORD: ${INITIAL_ADMIN_PASSWORD:-}
-      INITIAL_ADMIN_EMAIL: ${INITIAL_ADMIN_EMAIL:-}
-      INITIAL_ADMIN_FULL_NAME: ${INITIAL_ADMIN_FULL_NAME:-Portal Administrator}
-    depends_on:
-      - db
-
-volumes:
-  postgres_data:
-```
-
-Development stack with hot reload:
-
-```bash
-docker compose -f docker-compose.dev.yml up --build
-```
-
-Local development URLs:
-
-- Frontend: `http://localhost:5173`
-- Backend API: `http://localhost:8001`
-- Nginx entrypoint: `http://localhost:8080`
-- API docs: `http://localhost:8001/docs`
-
-Assignment notifications and submitted-attempt reports are queued in the database and processed by
-the `worker` service. Admins can inspect recent queue activity through:
-
-```text
-/api/v1/admin/jobs
-/api/v1/admin/reports
-```
-
-## Docker Image
+## Published Docker Image
 
 Published image:
 
@@ -162,7 +161,13 @@ Published image:
 ghcr.io/sameeralam3127/secure-exam-portal:latest
 ```
 
-Build the image locally:
+Pull it:
+
+```bash
+docker pull ghcr.io/sameeralam3127/secure-exam-portal:latest
+```
+
+Build the single image locally:
 
 ```bash
 docker build -t secure-exam-portal:local .
@@ -174,28 +179,43 @@ Run the local image:
 docker run --env-file .env -p 80:80 secure-exam-portal:local
 ```
 
-## GitHub Packages and Releases
+## Local Commands
 
-Docker images are published to GitHub Container Registry by the `Build and Publish Docker Images`
-workflow.
-
-Published package name:
-
-```text
-ghcr.io/sameeralam3127/secure-exam-portal
-```
-
-Publishing rules:
-
-- Push to `main` publishes `latest`, `main`, and `sha-*` image tags.
-- Push a version tag like `v1.0.0` to publish versioned images and create a GitHub Release.
-- Publishing a GitHub Release also runs the Docker image workflow.
-
-Create a release build:
+Frontend commands:
 
 ```bash
-git tag v1.0.0
-git push origin v1.0.0
+cd frontend
+npm install
+npm run dev
+npm run build
+npm run lint
+npm test
+```
+
+Backend local setup:
+
+```bash
+cd backend
+python -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+uvicorn app.main:app --reload
+```
+
+Worker local run:
+
+```bash
+cd backend
+python -m app.worker
+```
+
+The backend expects a PostgreSQL database. The development compose file exposes
+PostgreSQL on `localhost:5432` with:
+
+```text
+Database: secure_exam_portal
+User: secure_exam_user
+Password: local_dev_password
 ```
 
 ## API Surface
@@ -203,52 +223,89 @@ git push origin v1.0.0
 Main versioned endpoints:
 
 ```text
-/api/v1/health
-/api/v1/auth/login
-/api/v1/auth/register
-/api/v1/auth/google
-/api/v1/admin/dashboard
-/api/v1/admin/students
-/api/v1/admin/students/bulk
-/api/v1/admin/exams
-/api/v1/admin/exams/bulk
-/api/v1/admin/assignments
-/api/v1/admin/jobs
-/api/v1/admin/reports
-/api/v1/student/dashboard
-/api/v1/student/assignments
-/api/v1/student/attempts/history
+GET  /api/v1/health
+POST /api/v1/auth/login
+POST /api/v1/auth/register
+POST /api/v1/auth/google
+GET  /api/v1/auth/me
+
+GET  /api/v1/admin/dashboard
+GET  /api/v1/admin/students
+POST /api/v1/admin/students
+POST /api/v1/admin/students/bulk
+GET  /api/v1/admin/exams
+POST /api/v1/admin/exams
+POST /api/v1/admin/exams/bulk
+GET  /api/v1/admin/assignments
+POST /api/v1/admin/assignments
+GET  /api/v1/admin/jobs
+GET  /api/v1/admin/reports
+GET  /api/v1/admin/security-incidents
+
+GET  /api/v1/student/dashboard
+GET  /api/v1/student/assignments
+POST /api/v1/student/assignments/{assignment_id}/start
+PUT  /api/v1/student/attempts/{attempt_id}/answers
+POST /api/v1/student/attempts/{attempt_id}/submit
+POST /api/v1/student/attempts/{attempt_id}/security-incidents
+GET  /api/v1/student/attempts/history
 ```
+
+Interactive OpenAPI docs are available at `/docs` when the backend is running.
 
 ## Bulk Upload Formats
 
-Bulk students textarea:
+Bulk students use one student per line:
 
 ```text
 Full Name,username,email,password
+Jane Student,jane,jane@example.com,secret123
 ```
 
-Bulk exams textarea:
+Bulk exams use JSON:
 
 ```json
 {
   "exams": [
     {
-      "title": "Exam Title",
-      "description": "Exam description",
-      "duration_minutes": 30,
+      "title": "Computer Basics",
+      "description": "Introductory MCQ exam",
+      "duration_minutes": 20,
+      "block_clipboard": true,
+      "block_context_menu": true,
+      "block_inspect_shortcuts": true,
+      "enforce_fullscreen": false,
+      "track_focus_loss": true,
       "questions": [
         {
-          "question_text": "Question text",
-          "option_a": "Option A",
-          "option_b": "Option B",
-          "option_c": "Option C",
-          "option_d": "Option D",
+          "question_text": "CPU stands for?",
+          "option_a": "Central Processing Unit",
+          "option_b": "Computer Personal Unit",
+          "option_c": "Central Power Utility",
+          "option_d": "Control Process User",
           "correct_option": "A",
-          "marks": 1
+          "marks": 2
         }
       ]
     }
   ]
 }
+```
+
+## Releases
+
+Docker images are published to GitHub Container Registry by the repository's
+Docker image workflow.
+
+Publishing rules:
+
+- Pushes to `main` publish `latest`, `main`, and `sha-*` image tags.
+- Version tags such as `v1.0.0` publish versioned images and create a GitHub Release.
+- Publishing a GitHub Release also runs the Docker image workflow.
+
+Create a release build:
+
+```bash
+git tag v1.0.0
+git push origin v1.0.0
 ```
