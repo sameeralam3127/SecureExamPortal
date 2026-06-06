@@ -15,6 +15,16 @@ services:
       timeout: 5s
       retries: 5
 
+  nginx:
+    image: nginx:1.27-alpine
+    ports:
+      - "8080:80"
+    volumes:
+      - ./docker/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - backend
+      - frontend
+
   backend:
     build:
       context: ./backend
@@ -22,7 +32,7 @@ services:
     environment:
       ENVIRONMENT: development
       DATABASE_URL: postgresql+psycopg://secure_exam_user:local_dev_password@db:5432/secure_exam_portal
-      CORS_ORIGINS: '["http://localhost:5173","http://127.0.0.1:5173"]'
+      CORS_ORIGINS: '["http://localhost:5173","http://127.0.0.1:5173","http://localhost:8080","http://127.0.0.1:8080"]'
       FRONTEND_BASE_URL: http://localhost:5173
       AUTH_SECRET_KEY: local-development-secret
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
@@ -36,6 +46,7 @@ services:
       INITIAL_ADMIN_PASSWORD: ${INITIAL_ADMIN_PASSWORD:-}
       INITIAL_ADMIN_EMAIL: ${INITIAL_ADMIN_EMAIL:-}
       INITIAL_ADMIN_FULL_NAME: ${INITIAL_ADMIN_FULL_NAME:-Portal Administrator}
+      FORWARDED_ALLOW_IPS: "*"
     ports:
       - "8001:8000"
     depends_on:
@@ -44,6 +55,35 @@ services:
     volumes:
       - ./backend:/app
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+
+  worker:
+    build:
+      context: ./backend
+      dockerfile: docker/Dockerfile
+    environment:
+      ENVIRONMENT: development
+      DATABASE_URL: postgresql+psycopg://secure_exam_user:local_dev_password@db:5432/secure_exam_portal
+      CORS_ORIGINS: '["http://localhost:5173","http://127.0.0.1:5173","http://localhost:8080","http://127.0.0.1:8080"]'
+      FRONTEND_BASE_URL: http://localhost:8080
+      AUTH_SECRET_KEY: local-development-secret
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USERNAME: ${SMTP_USERNAME:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_FROM_EMAIL: ${SMTP_FROM_EMAIL:-no-reply@secureexamportal.com}
+      SMTP_USE_TLS: ${SMTP_USE_TLS:-true}
+      INITIAL_ADMIN_USERNAME: ${INITIAL_ADMIN_USERNAME:-}
+      INITIAL_ADMIN_PASSWORD: ${INITIAL_ADMIN_PASSWORD:-}
+      INITIAL_ADMIN_EMAIL: ${INITIAL_ADMIN_EMAIL:-}
+      INITIAL_ADMIN_FULL_NAME: ${INITIAL_ADMIN_FULL_NAME:-Portal Administrator}
+      WORKER_POLL_INTERVAL_SECONDS: ${WORKER_POLL_INTERVAL_SECONDS:-2}
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ./backend:/app
+    command: python -m app.worker
 
   frontend:
     image: node:20-alpine

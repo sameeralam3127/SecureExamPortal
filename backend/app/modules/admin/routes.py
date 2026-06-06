@@ -5,13 +5,14 @@ from sqlalchemy import desc, func, select
 from sqlalchemy.orm import Session, selectinload
 
 from app.extensions.db import get_db
-from app.extensions.mail import send_assignment_email
 from app.models.exam import AttemptStatus, Exam, ExamAssignment, ExamAttempt, ExamQuestion, SecurityIncident
+from app.models.job import BackgroundJob, JobStatus
 from app.models.user import User, UserRole
 from app.modules.auth.dependencies import require_admin
 from app.schemas.exam import (
     AssignmentCreate,
     AssignmentRead,
+    BackgroundJobRead,
     BulkExamCreate,
     DashboardStats,
     ExamCreate,
@@ -19,6 +20,7 @@ from app.schemas.exam import (
     SecurityIncidentRead,
 )
 from app.schemas.user import BulkUserCreate, UserCreate, UserRead
+from app.services.job_queue import ATTEMPT_REPORT_JOB, enqueue_assignment_email
 from app.utils.security import hash_password
 
 router = APIRouter(prefix="/admin", tags=["admin"])
@@ -232,16 +234,15 @@ def assign_exam(
 
     assignment = ExamAssignment(exam_id=payload.exam_id, student_id=payload.student_id)
     db.add(assignment)
+    enqueue_assignment_email(
+        db,
+        recipient_email=student.email,
+        student_name=student.full_name,
+        exam_title=exam.title,
+    )
     db.commit()
     db.refresh(assignment)
-    try:
-        send_assignment_email(student.email, student.full_name, exam.title)
-    except Exception:
-        logger.exception(
-            "Failed to send assignment email to %s for exam %s",
-            student.email,
-            exam.title,
-        )
+    logger.info("Queued assignment email to %s for exam %s", student.email, exam.title)
     return AssignmentRead(
         id=assignment.id,
         exam_id=assignment.exam_id,
@@ -283,6 +284,32 @@ def list_assignments(
             )
         )
     return result
+
+
+@router.get("/jobs", response_model=list[BackgroundJobRead])
+def list_background_jobs(
+    _: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+) -> list[BackgroundJob]:
+    return list(db.scalars(select(BackgroundJob).order_by(desc(BackgroundJob.id)).limit(100)).all())
+
+
+@router.get("/reports", response_model=list[BackgroundJobRead])
+def list_generated_reports(
+    _: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+) -> list[BackgroundJob]:
+    return list(
+        db.scalars(
+            select(BackgroundJob)
+            .where(
+                BackgroundJob.job_type == ATTEMPT_REPORT_JOB,
+                BackgroundJob.status == JobStatus.completed,
+            )
+            .order_by(desc(BackgroundJob.completed_at), desc(BackgroundJob.id))
+            .limit(100)
+        ).all()
+    )
 
 
 @router.get("/security-incidents", response_model=list[SecurityIncidentRead])
