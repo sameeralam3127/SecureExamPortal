@@ -3,6 +3,7 @@ from datetime import datetime
 from pydantic import BaseModel, ConfigDict, Field
 
 from app.models.exam import AttemptStatus
+from app.models.job import JobStatus
 
 
 class QuestionCreate(BaseModel):
@@ -171,5 +172,21 @@ class AssignmentStatusRead(BaseModel):
     score: int | None = None
     total_marks: int | None = None
     percentage: float | None = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class BackgroundJobRead(BaseModel):
+    id: int
+    job_type: str
+    status: JobStatus
+    payload: dict
+    result: dict | None = None
+    error: str | None = None
+    attempts: int
+    max_attempts: int
+    created_at: datetime
+    started_at: datetime | None = None
+    completed_at: datetime | None = None
 
     model_config = ConfigDict(from_attributes=True)

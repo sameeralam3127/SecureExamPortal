@@ -5,10 +5,12 @@ Production-ready online examination portal with a FastAPI backend, PostgreSQL da
 ## Stack
 
 - Backend: FastAPI, SQLAlchemy, PostgreSQL, Gunicorn/Uvicorn
+- Workers: database-backed background queue for email and report jobs
 - Frontend: React, Vite, Nginx
 - Containers: Docker and Docker Compose
 - Auth: Password login, role-based access, optional Google sign-in
-- Notifications: Optional SMTP assignment email
+- Edge: Nginx reverse proxy with forwarded headers
+- Notifications: Optional SMTP assignment email processed asynchronously
 
 ## Repository Layout
 
@@ -70,6 +72,20 @@ Production-style stack built from this repository:
 docker compose up --build
 ```
 
+The production Compose stack starts separate services for:
+
+- `nginx`: public entrypoint and reverse proxy for `/api` and frontend traffic
+- `backend`: FastAPI API workers behind Nginx
+- `worker`: queue consumer for assignment email and submitted-attempt report jobs
+- `db`: PostgreSQL storage for application data and queued jobs
+- `frontend`: built React assets served by Nginx
+
+Scale API or worker capacity horizontally by adding replicas behind the Nginx entrypoint:
+
+```bash
+docker compose up --build --scale backend=2 --scale worker=2
+```
+
 Production stack using the published GitHub Packages image:
 
 ```bash
@@ -127,7 +143,16 @@ Local development URLs:
 
 - Frontend: `http://localhost:5173`
 - Backend API: `http://localhost:8001`
+- Nginx entrypoint: `http://localhost:8080`
 - API docs: `http://localhost:8001/docs`
+
+Assignment notifications and submitted-attempt reports are queued in the database and processed by
+the `worker` service. Admins can inspect recent queue activity through:
+
+```text
+/api/v1/admin/jobs
+/api/v1/admin/reports
+```
 
 ## Docker Image
 
@@ -188,6 +213,8 @@ Main versioned endpoints:
 /api/v1/admin/exams
 /api/v1/admin/exams/bulk
 /api/v1/admin/assignments
+/api/v1/admin/jobs
+/api/v1/admin/reports
 /api/v1/student/dashboard
 /api/v1/student/assignments
 /api/v1/student/attempts/history
