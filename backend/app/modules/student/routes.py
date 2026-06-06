@@ -20,6 +20,7 @@ from app.schemas.exam import (
     SecurityIncidentRead,
     StudentDashboard,
 )
+from app.services.job_queue import enqueue_attempt_report
 
 router = APIRouter(prefix="/student", tags=["student"])
 
@@ -337,6 +338,8 @@ def submit_attempt(
     attempt.total_marks = sum(question.marks for question in question_map.values())
     attempt.percentage = round((score / attempt.total_marks) * 100, 2) if attempt.total_marks else 0
     attempt.submitted_at = datetime.now(timezone.utc)
+    db.flush()
+    enqueue_attempt_report(db, attempt_id=attempt.id)
     db.commit()
     db.refresh(attempt)
 

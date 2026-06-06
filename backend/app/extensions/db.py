@@ -26,9 +26,12 @@ def get_db() -> Generator[Session, None, None]:
 
 
 def init_db() -> None:
+    from app.models import exam as exam_models
+    from app.models import job as job_models
     from app.models.user import User, UserRole
     from app.utils.security import hash_password
 
+    _ = (exam_models, job_models)
     Base.metadata.create_all(bind=engine)
     ensure_exam_security_columns()
 
