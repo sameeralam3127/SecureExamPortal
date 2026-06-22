@@ -8,7 +8,7 @@ and production-style deployments.
 
 ## Features
 
-- Student registration, password login, bearer-token sessions, and optional Google sign-in.
+- Student registration, password login, production-validated bearer-token sessions, and optional Google sign-in.
 - Role-based admin and student dashboards.
 - Admin student management, including bulk student creation.
 - Admin exam authoring, including bulk exam upload and MCQ question banks.
@@ -17,7 +17,8 @@ and production-style deployments.
 - Student exam attempts with timer, autosaved answers, submission scoring, and attempt history.
 - Configurable exam security controls for clipboard, context menu, inspect shortcuts, fullscreen, and focus-loss tracking.
 - Admin views for security incidents, queued jobs, and completed reports.
-- Production validation for secrets, database URLs, and CORS origins.
+- Production validation for secrets, token lifetime, database URLs, HTTPS frontend URLs, and CORS origins.
+- Nginx security headers, API/auth rate limiting, ACME challenge support, and optional HTTPS config for Let's Encrypt.
 
 ## Tech Stack
 
@@ -47,7 +48,8 @@ SecureExamPortal/
 │   ├── requirements.txt
 │   └── wsgi.py
 ├── docker/
-│   └── nginx.conf
+│   ├── nginx.conf
+│   └── nginx.tls.conf
 ├── frontend/
 │   ├── src/
 │   ├── Dockerfile
@@ -100,14 +102,19 @@ Required production values:
 POSTGRES_PASSWORD=replace-with-a-strong-database-password
 DATABASE_URL=postgresql+psycopg://secure_exam_user:replace-with-a-strong-database-password@db:5432/secure_exam_portal
 AUTH_SECRET_KEY=replace-with-a-long-random-secret
+ACCESS_TOKEN_EXPIRE_MINUTES=120
+AUTH_RATE_LIMIT_ATTEMPTS=10
+AUTH_RATE_LIMIT_WINDOW_SECONDS=60
 CORS_ORIGINS=["https://your-domain.example"]
 FRONTEND_BASE_URL=https://your-domain.example
+HTTPS_PORT=443
 ```
 
 Optional integrations, worker settings, and bootstrap values:
 
 ```env
 GOOGLE_CLIENT_ID=
+GOOGLE_ALLOWED_DOMAINS=[]
 SMTP_HOST=
 SMTP_PORT=587
 SMTP_USERNAME=
@@ -121,8 +128,21 @@ INITIAL_ADMIN_EMAIL=
 INITIAL_ADMIN_FULL_NAME=Portal Administrator
 ```
 
-In production, the backend rejects the default local secret, local database
-passwords, and localhost CORS origins.
+In production, the backend rejects the default local secret, secrets shorter
+than 32 characters, token lifetimes above 240 minutes, local database passwords,
+localhost CORS origins, and non-HTTPS frontend URLs. Use a generated secret,
+for example:
+
+```bash
+openssl rand -hex 32
+```
+
+Google sign-in is environment driven. Set `GOOGLE_CLIENT_ID` to the OAuth web
+client ID from Google Cloud, add the same value to the frontend build through
+Compose, and configure Google authorized JavaScript origins for the production
+domain. To restrict sign-ins to school or company accounts, set
+`GOOGLE_ALLOWED_DOMAINS=["example.edu"]`; leave it as `[]` to allow any verified
+Google email.
 
 ## Production-Style Docker Run
 
@@ -140,7 +160,49 @@ The production Compose stack starts separate services for:
 - `db`: PostgreSQL storage for application data and queued jobs
 - `frontend`: built React assets served by Nginx
 
-The Nginx entrypoint listens on `FRONTEND_PORT`, which defaults to `80`.
+The Nginx entrypoint listens on `FRONTEND_PORT`, which defaults to `80`, and
+`HTTPS_PORT`, which defaults to `443`. The default `docker/nginx.conf` is safe
+for initial certificate issuance: it serves `/.well-known/acme-challenge/`,
+forwards the frontend/API, adds security headers, and rate limits auth/API
+traffic.
+
+For a public production server, point DNS at the host, fill `.env` with the
+real `https://` domain values, and start the stack:
+
+```bash
+docker compose up --build -d
+```
+
+Issue the first Let's Encrypt certificate with the opt-in certbot profile:
+
+```bash
+docker compose --profile tls run --rm certbot certonly \
+  --webroot \
+  --webroot-path /var/www/certbot \
+  --email admin@your-domain.example \
+  --agree-tos \
+  --no-eff-email \
+  -d your-domain.example
+```
+
+After the certificate exists under the shared `letsencrypt` volume, switch the
+Nginx mount in `docker-compose.yml` from `./docker/nginx.conf` to
+`./docker/nginx.tls.conf`, then reload the edge service:
+
+```bash
+docker compose up -d nginx
+```
+
+Renew certificates from the same host:
+
+```bash
+docker compose --profile tls run --rm certbot renew --webroot --webroot-path /var/www/certbot
+docker compose exec nginx nginx -s reload
+```
+
+Keep `.env` out of source control and rotate `AUTH_SECRET_KEY`, database
+passwords, SMTP credentials, and OAuth credentials whenever a production secret
+may have been exposed.
 
 Scale API or worker capacity horizontally by adding replicas behind the Nginx entrypoint:
 

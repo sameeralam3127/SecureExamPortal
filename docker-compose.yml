@@ -18,12 +18,22 @@ services:
     image: nginx:1.27-alpine
     ports:
       - "${FRONTEND_PORT:-80}:80"
+      - "${HTTPS_PORT:-443}:443"
     volumes:
       - ./docker/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - certbot_webroot:/var/www/certbot
+      - letsencrypt:/etc/letsencrypt:ro
     depends_on:
       - backend
       - frontend
     restart: unless-stopped
+
+  certbot:
+    image: certbot/certbot:v2.11.0
+    profiles: ["tls"]
+    volumes:
+      - certbot_webroot:/var/www/certbot
+      - letsencrypt:/etc/letsencrypt
 
   backend:
     build:
@@ -35,7 +45,11 @@ services:
       DATABASE_URL: ${DATABASE_URL:?Set DATABASE_URL before starting production containers}
       CORS_ORIGINS: ${CORS_ORIGINS:?Set CORS_ORIGINS before starting production containers}
       FRONTEND_BASE_URL: ${FRONTEND_BASE_URL:?Set FRONTEND_BASE_URL before starting production containers}
+      ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES:-120}
+      AUTH_RATE_LIMIT_ATTEMPTS: ${AUTH_RATE_LIMIT_ATTEMPTS:-10}
+      AUTH_RATE_LIMIT_WINDOW_SECONDS: ${AUTH_RATE_LIMIT_WINDOW_SECONDS:-60}
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_ALLOWED_DOMAINS: ${GOOGLE_ALLOWED_DOMAINS:-[]}
       SMTP_HOST: ${SMTP_HOST:-}
       SMTP_PORT: ${SMTP_PORT:-587}
       SMTP_USERNAME: ${SMTP_USERNAME:-}
@@ -63,7 +77,11 @@ services:
       DATABASE_URL: ${DATABASE_URL:?Set DATABASE_URL before starting production containers}
       CORS_ORIGINS: ${CORS_ORIGINS:?Set CORS_ORIGINS before starting production containers}
       FRONTEND_BASE_URL: ${FRONTEND_BASE_URL:?Set FRONTEND_BASE_URL before starting production containers}
+      ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES:-120}
+      AUTH_RATE_LIMIT_ATTEMPTS: ${AUTH_RATE_LIMIT_ATTEMPTS:-10}
+      AUTH_RATE_LIMIT_WINDOW_SECONDS: ${AUTH_RATE_LIMIT_WINDOW_SECONDS:-60}
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_ALLOWED_DOMAINS: ${GOOGLE_ALLOWED_DOMAINS:-[]}
       SMTP_HOST: ${SMTP_HOST:-}
       SMTP_PORT: ${SMTP_PORT:-587}
       SMTP_USERNAME: ${SMTP_USERNAME:-}
@@ -93,3 +111,5 @@ services:
 
 volumes:
   postgres_data:
+  certbot_webroot:
+  letsencrypt:
