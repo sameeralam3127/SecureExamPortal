@@ -26,16 +26,16 @@ def verify_password(password: str, password_hash: str) -> bool:
 
 def create_access_token(user_id: int, username: str, role: str) -> str:
     settings = get_settings()
+    now = datetime.now(timezone.utc)
     payload = {
         "sub": user_id,
         "username": username,
         "role": role,
-        "exp": int(
-            (
-                datetime.now(timezone.utc)
-                + timedelta(minutes=settings.access_token_expire_minutes)
-            ).timestamp()
-        ),
+        "iss": settings.auth_token_issuer,
+        "aud": settings.auth_token_audience,
+        "iat": int(now.timestamp()),
+        "exp": int((now + timedelta(minutes=settings.access_token_expire_minutes)).timestamp()),
+        "jti": secrets.token_urlsafe(16),
     }
     body = base64.urlsafe_b64encode(json.dumps(payload).encode("utf-8")).decode("utf-8").rstrip("=")
     signature = hmac.new(
@@ -63,6 +63,13 @@ def decode_access_token(token: str) -> dict:
 
     padded_body = body + "=" * (-len(body) % 4)
     payload = json.loads(base64.urlsafe_b64decode(padded_body.encode("utf-8")).decode("utf-8"))
-    if int(payload.get("exp", 0)) < int(datetime.now(timezone.utc).timestamp()):
+    now = int(datetime.now(timezone.utc).timestamp())
+    if int(payload.get("exp", 0)) < now:
         raise ValueError("Token expired")
+    if int(payload.get("iat", 0)) > now + 60:
+        raise ValueError("Token issued in the future")
+    if payload.get("iss") != settings.auth_token_issuer:
+        raise ValueError("Invalid token issuer")
+    if payload.get("aud") != settings.auth_token_audience:
+        raise ValueError("Invalid token audience")
     return payload

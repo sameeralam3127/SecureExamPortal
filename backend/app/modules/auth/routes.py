@@ -87,6 +87,16 @@ def google_login(payload: GoogleLoginRequest, db: Session = Depends(get_db)) -> 
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Google client mismatch",
         )
+    if profile.get("iss") not in {"accounts.google.com", "https://accounts.google.com"}:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid Google token issuer",
+        )
+    if profile.get("email_verified") != "true":
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Google account email is not verified",
+        )
 
     email = profile.get("email")
     full_name = profile.get("name") or "Google User"
@@ -94,6 +104,13 @@ def google_login(payload: GoogleLoginRequest, db: Session = Depends(get_db)) -> 
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Google account email not available",
+        )
+    email_domain = email.rsplit("@", 1)[-1].lower()
+    allowed_domains = {domain.lower() for domain in settings.google_allowed_domains}
+    if allowed_domains and email_domain not in allowed_domains:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Google account domain is not allowed",
         )
 
     user = db.scalar(select(User).where(User.email == email))
