@@ -1,76 +1,68 @@
 # Secure Exam Portal
 
-Secure Exam Portal is a production-ready online examination system for creating,
-assigning, taking, and reviewing MCQ exams. It ships with a FastAPI backend,
-PostgreSQL persistence, a database-backed background worker, an Nginx edge
-proxy, and a Vite React frontend, with Docker Compose workflows for development
-and production-style deployments.
+Secure Exam Portal is a production-oriented online examination platform for
+creating, assigning, taking, and reviewing MCQ exams. It includes a FastAPI API,
+PostgreSQL persistence, a queue worker for emails and reports, an Nginx edge
+proxy, and a Vite React frontend.
 
-## Latest Changes
+> [!IMPORTANT]
+> This repository is designed for real deployment, not only local demos. The
+> production stack validates secrets, CORS origins, database URLs, token
+> lifetimes, HTTPS frontend URLs, Google sign-in domains, and Nginx edge
+> configuration before the app is exposed.
 
-Last updated: June 25, 2026
+## What It Does
 
-- Hardened production authentication settings with stricter secret, token
-  lifetime, CORS, database URL, and frontend URL validation.
-- Added configurable auth rate limiting and Google sign-in domain allowlisting.
-- Expanded Nginx deployment support with security headers, API/auth rate
-  limits, ACME challenge handling, and an optional Let's Encrypt TLS config.
-- Documented the HTTPS production runbook, certificate renewal flow, and
-  production secret rotation guidance.
-
-## Features
-
-- Student registration, password login, production-validated bearer-token sessions, and optional Google sign-in.
+- Student registration, password login, bearer-token sessions, and optional
+  Google Identity Services sign-in.
 - Role-based admin and student dashboards.
-- Admin student management, including bulk student creation.
-- Admin exam authoring, including bulk exam upload and MCQ question banks.
-- Exam assignment workflow with SMTP email jobs processed asynchronously.
-- Submitted-attempt report jobs processed by a database-backed worker queue.
-- Student exam attempts with timer, autosaved answers, submission scoring, and attempt history.
-- Configurable exam security controls for clipboard, context menu, inspect shortcuts, fullscreen, and focus-loss tracking.
-- Admin views for security incidents, queued jobs, and completed reports.
-- Production validation for secrets, token lifetime, database URLs, HTTPS frontend URLs, and CORS origins.
-- Nginx security headers, API/auth rate limiting, ACME challenge support, and optional HTTPS config for Let's Encrypt.
+- Admin student management, including single-student creation and CSV-style
+  bulk upload.
+- Admin exam authoring, including bulk JSON exam upload and MCQ question banks.
+- Exam assignment workflow with optional SMTP email notifications.
+- Database-backed worker queue for assignment emails and submitted-attempt
+  reports.
+- Student exam attempts with timer, autosaved answers, submission scoring, and
+  attempt history.
+- Configurable exam security controls for clipboard, context menu, inspect
+  shortcuts, fullscreen, and focus-loss tracking.
+- Admin visibility into queued jobs, completed reports, and security incidents.
+- Production-ready Nginx reverse proxy with security headers, auth/API rate
+  limits, ACME challenge support, and optional Let's Encrypt TLS config.
+
+## Architecture
+
+```text
+Browser
+  |
+  v
+Nginx edge proxy
+  |-- /api/*  -> FastAPI backend
+  |-- /*      -> Vite React frontend
+  |
+  |-- /.well-known/acme-challenge/* -> Certbot webroot
+
+FastAPI backend
+  |-- PostgreSQL
+  |-- Database-backed jobs
+
+Worker
+  |-- PostgreSQL job queue
+  |-- SMTP provider, when configured
+```
 
 ## Tech Stack
 
-- Backend: FastAPI, SQLAlchemy, Pydantic, PostgreSQL, Uvicorn, Gunicorn
-- Worker: database-backed queue for email and report jobs
-- Frontend: React, Vite, Nginx
-- Edge: Nginx reverse proxy with forwarded headers
-- Auth: Password login, role checks, optional Google Identity Services
-- Containers: Docker and Docker Compose
-- Notifications: Optional SMTP assignment email
-
-## Repository Layout
-
-```text
-SecureExamPortal/
-├── backend/
-│   ├── app/
-│   │   ├── config/
-│   │   ├── extensions/
-│   │   ├── models/
-│   │   ├── modules/
-│   │   ├── repositories/
-│   │   ├── schemas/
-│   │   └── utils/
-│   ├── docker/Dockerfile
-│   ├── manage.py
-│   ├── requirements.txt
-│   └── wsgi.py
-├── docker/
-│   ├── nginx.conf
-│   └── nginx.tls.conf
-├── frontend/
-│   ├── src/
-│   ├── Dockerfile
-│   ├── nginx.conf
-│   └── package.json
-├── docker-compose.yml
-├── docker-compose.dev.yml
-└── .env.example
-```
+| Layer           | Technology                                                     |
+| --------------- | -------------------------------------------------------------- |
+| Backend API     | FastAPI, SQLAlchemy, Pydantic, Uvicorn, Gunicorn               |
+| Database        | PostgreSQL 16                                                  |
+| Background jobs | Database-backed queue worker                                   |
+| Frontend        | React, Vite                                                    |
+| Edge            | Nginx reverse proxy                                            |
+| Auth            | Password login, role checks, optional Google Identity Services |
+| Deployment      | Docker, Docker Compose, optional Certbot/Let's Encrypt         |
+| Registry        | GitHub Container Registry                                      |
 
 ## Quick Start
 
@@ -80,15 +72,16 @@ Run the development stack with hot reload:
 docker compose -f docker-compose.dev.yml up --build
 ```
 
-Local URLs:
+Development URLs:
 
-- Frontend: `http://localhost:5173`
-- Backend API: `http://localhost:8001`
-- Nginx entrypoint: `http://localhost:8080`
-- API docs: `http://localhost:8001/docs`
+| Service          | URL                          |
+| ---------------- | ---------------------------- |
+| Frontend         | `http://localhost:5173`      |
+| Backend API      | `http://localhost:8001`      |
+| Nginx entrypoint | `http://localhost:8080`      |
+| OpenAPI docs     | `http://localhost:8001/docs` |
 
-To bootstrap an admin account in a fresh development database, provide these
-values before starting the stack:
+Bootstrap the first admin account in a fresh development database:
 
 ```bash
 INITIAL_ADMIN_USERNAME=admin \
@@ -97,12 +90,15 @@ INITIAL_ADMIN_EMAIL=admin@example.com \
 docker compose -f docker-compose.dev.yml up --build
 ```
 
-Student accounts can also register from the login page. Admin accounts are
-created only through the initial-admin bootstrap path.
+> [!NOTE]
+> Student accounts can register from the login page. Admin accounts are created
+> through the initial-admin bootstrap path, so do not leave bootstrap
+> credentials enabled after the first production admin exists.
 
-## Environment Configuration
+## Production Environment
 
-Copy `.env.example` to `.env` for production-style runs:
+Copy the sample environment file and replace every placeholder before starting
+the production Compose stack:
 
 ```bash
 cp .env.example .env
@@ -111,6 +107,9 @@ cp .env.example .env
 Required production values:
 
 ```env
+ENVIRONMENT=production
+POSTGRES_DB=secure_exam_portal
+POSTGRES_USER=secure_exam_user
 POSTGRES_PASSWORD=replace-with-a-strong-database-password
 DATABASE_URL=postgresql+psycopg://secure_exam_user:replace-with-a-strong-database-password@db:5432/secure_exam_portal
 AUTH_SECRET_KEY=replace-with-a-long-random-secret
@@ -119,10 +118,12 @@ AUTH_RATE_LIMIT_ATTEMPTS=10
 AUTH_RATE_LIMIT_WINDOW_SECONDS=60
 CORS_ORIGINS=["https://your-domain.example"]
 FRONTEND_BASE_URL=https://your-domain.example
+FRONTEND_PORT=80
 HTTPS_PORT=443
+VITE_API_BASE_URL=/api
 ```
 
-Optional integrations, worker settings, and bootstrap values:
+Optional integrations and bootstrap values:
 
 ```env
 GOOGLE_CLIENT_ID=
@@ -140,52 +141,50 @@ INITIAL_ADMIN_EMAIL=
 INITIAL_ADMIN_FULL_NAME=Portal Administrator
 ```
 
-In production, the backend rejects the default local secret, secrets shorter
-than 32 characters, token lifetimes above 240 minutes, local database passwords,
-localhost CORS origins, and non-HTTPS frontend URLs. Use a generated secret,
-for example:
+> [!CAUTION]
+> Never commit `.env`. Rotate `AUTH_SECRET_KEY`, database passwords, SMTP
+> credentials, and OAuth credentials if they are ever exposed.
+
+> [!IMPORTANT]
+> In production, the backend rejects weak defaults: local development secrets,
+> secrets shorter than 32 characters, token lifetimes above 240 minutes, local
+> database passwords, localhost CORS origins, and non-HTTPS frontend URLs.
+
+Generate a strong application secret:
 
 ```bash
 openssl rand -hex 32
 ```
 
-Google sign-in is environment driven. Set `GOOGLE_CLIENT_ID` to the OAuth web
-client ID from Google Cloud, add the same value to the frontend build through
-Compose, and configure Google authorized JavaScript origins for the production
-domain. To restrict sign-ins to school or company accounts, set
-`GOOGLE_ALLOWED_DOMAINS=["example.edu"]`; leave it as `[]` to allow any verified
-Google email.
+## Production Deployment
 
-## Production-Style Docker Run
-
-Build and run the production-style stack from this repository:
-
-```bash
-docker compose up --build
-```
-
-The production Compose stack starts separate services for:
-
-- `nginx`: public entrypoint and reverse proxy for `/api` and frontend traffic
-- `backend`: FastAPI API workers behind Nginx
-- `worker`: queue consumer for assignment email and submitted-attempt report jobs
-- `db`: PostgreSQL storage for application data and queued jobs
-- `frontend`: built React assets served by Nginx
-
-The Nginx entrypoint listens on `FRONTEND_PORT`, which defaults to `80`, and
-`HTTPS_PORT`, which defaults to `443`. The default `docker/nginx.conf` is safe
-for initial certificate issuance: it serves `/.well-known/acme-challenge/`,
-forwards the frontend/API, adds security headers, and rate limits auth/API
-traffic.
-
-For a public production server, point DNS at the host, fill `.env` with the
-real `https://` domain values, and start the stack:
+Start the production-style stack:
 
 ```bash
 docker compose up --build -d
 ```
 
-Issue the first Let's Encrypt certificate with the opt-in certbot profile:
+The stack starts:
+
+| Service    | Purpose                                                         |
+| ---------- | --------------------------------------------------------------- |
+| `nginx`    | Public entrypoint, reverse proxy, security headers, rate limits |
+| `backend`  | FastAPI application workers                                     |
+| `worker`   | Queue consumer for email and report jobs                        |
+| `db`       | PostgreSQL data store                                           |
+| `frontend` | Built React app served behind Nginx                             |
+| `certbot`  | Optional TLS certificate management profile                     |
+
+The default `docker/nginx.conf` is suitable for initial public setup because it
+serves `/.well-known/acme-challenge/`, proxies the frontend and API, adds
+security headers, and rate limits auth/API traffic.
+
+### Enable HTTPS
+
+Point DNS for your production domain at the server, set `CORS_ORIGINS` and
+`FRONTEND_BASE_URL` to the real `https://` domain, then start the stack.
+
+Issue the first Let's Encrypt certificate:
 
 ```bash
 docker compose --profile tls run --rm certbot certonly \
@@ -197,9 +196,20 @@ docker compose --profile tls run --rm certbot certonly \
   -d your-domain.example
 ```
 
-After the certificate exists under the shared `letsencrypt` volume, switch the
-Nginx mount in `docker-compose.yml` from `./docker/nginx.conf` to
-`./docker/nginx.tls.conf`, then reload the edge service:
+After the certificate exists in the shared `letsencrypt` volume, update the
+Nginx config mount in `docker-compose.yml` from:
+
+```yaml
+- ./docker/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+```
+
+to:
+
+```yaml
+- ./docker/nginx.tls.conf:/etc/nginx/conf.d/default.conf:ro
+```
+
+Reload Nginx:
 
 ```bash
 docker compose up -d nginx
@@ -212,50 +222,57 @@ docker compose --profile tls run --rm certbot renew --webroot --webroot-path /va
 docker compose exec nginx nginx -s reload
 ```
 
-Keep `.env` out of source control and rotate `AUTH_SECRET_KEY`, database
-passwords, SMTP credentials, and OAuth credentials whenever a production secret
-may have been exposed.
+> [!WARNING]
+> Do not put the TLS config in front of a domain until certificates exist. Use
+> the default HTTP config first so Certbot can complete the ACME challenge.
 
-Scale API or worker capacity horizontally by adding replicas behind the Nginx entrypoint:
+### Scale Services
+
+Scale API and worker capacity behind the Nginx entrypoint:
 
 ```bash
-docker compose up --build --scale backend=2 --scale worker=2
+docker compose up --build --scale backend=2 --scale worker=2 -d
 ```
 
-Assignment notifications and submitted-attempt reports are queued in the
-database and processed by the `worker` service. Admins can inspect recent queue
-activity through `/api/v1/admin/jobs` and completed report jobs through
-`/api/v1/admin/reports`.
+## Google Sign-In
 
-## Published Docker Image
+Set `GOOGLE_CLIENT_ID` to the OAuth web client ID from Google Cloud. The same
+value is passed into the frontend build through Docker Compose.
 
-Published image:
+To restrict sign-ins to a school or company domain:
+
+```env
+GOOGLE_ALLOWED_DOMAINS=["example.edu"]
+```
+
+Leave the list empty to allow any verified Google email:
+
+```env
+GOOGLE_ALLOWED_DOMAINS=[]
+```
+
+> [!TIP]
+> Configure Google authorized JavaScript origins for the exact production
+> domain that users open in the browser.
+
+## Email And Background Jobs
+
+Assignment notifications and submitted-attempt reports are stored in the
+database-backed queue and processed by the `worker` service.
+
+Admins can inspect queue activity through:
 
 ```text
-ghcr.io/sameeralam3127/secure-exam-portal:latest
+GET /api/v1/admin/jobs
+GET /api/v1/admin/reports
 ```
 
-Pull it:
+SMTP is optional. If SMTP variables are empty, the portal still runs, but email
+delivery features will not send real messages.
 
-```bash
-docker pull ghcr.io/sameeralam3127/secure-exam-portal:latest
-```
+## Local Development Commands
 
-Build the single image locally:
-
-```bash
-docker build -t secure-exam-portal:local .
-```
-
-Run the local image:
-
-```bash
-docker run --env-file .env -p 80:80 secure-exam-portal:local
-```
-
-## Local Commands
-
-Frontend commands:
+Frontend:
 
 ```bash
 cd frontend
@@ -266,7 +283,7 @@ npm run lint
 npm test
 ```
 
-Backend local setup:
+Backend:
 
 ```bash
 cd backend
@@ -276,21 +293,45 @@ pip install -r requirements.txt
 uvicorn app.main:app --reload
 ```
 
-Worker local run:
+Worker:
 
 ```bash
 cd backend
 python -m app.worker
 ```
 
-The backend expects a PostgreSQL database. The development compose file exposes
-PostgreSQL on `localhost:5432` with:
+Development database defaults:
 
 ```text
+Host: localhost:5432
 Database: secure_exam_portal
 User: secure_exam_user
 Password: local_dev_password
 ```
+
+## Quality Checks
+
+Run these before opening a pull request:
+
+```bash
+python3 -m compileall backend/app
+
+cd frontend
+npm test
+npm run build
+npm run lint
+```
+
+Validate the production Compose file after editing deployment settings:
+
+```bash
+docker compose --env-file .env.example config
+```
+
+> [!NOTE]
+> Docker and Nginx validation require those tools to be available on the host or
+> in CI. If Docker is not running locally, treat image and edge validation as
+> incomplete until CI or the production server checks them.
 
 ## API Surface
 
@@ -366,15 +407,42 @@ Bulk exams use JSON:
 }
 ```
 
-## Releases
+## Docker Image
 
-Docker images are published to GitHub Container Registry by the repository's
-Docker image workflow.
+Published image:
+
+```text
+ghcr.io/sameeralam3127/secure-exam-portal:latest
+```
+
+Pull it:
+
+```bash
+docker pull ghcr.io/sameeralam3127/secure-exam-portal:latest
+```
+
+Build the single image locally:
+
+```bash
+docker build -t secure-exam-portal:local .
+```
+
+Run the local image:
+
+```bash
+docker run --env-file .env -p 80:80 secure-exam-portal:local
+```
+
+## Release Workflow
+
+Docker images are published to GitHub Container Registry by
+`.github/workflows/docker-publish.yml`.
 
 Publishing rules:
 
 - Pushes to `main` publish `latest`, `main`, and `sha-*` image tags.
-- Version tags such as `v1.0.0` publish versioned images and create a GitHub Release.
+- Version tags such as `v1.0.0` publish versioned images and create a GitHub
+  Release.
 - Publishing a GitHub Release also runs the Docker image workflow.
 
 Create a release build:
@@ -383,3 +451,25 @@ Create a release build:
 git tag v1.0.0
 git push origin v1.0.0
 ```
+
+## Security Notes
+
+> [!IMPORTANT]
+> Treat the production server as the source of truth for final deployment
+> validation. Local checks are useful, but TLS, DNS, real OAuth origins, SMTP,
+> firewall rules, and certificate renewal must be verified on the host that
+> serves users.
+
+Recommended production practices:
+
+- Use a strong `AUTH_SECRET_KEY` and rotate it during incident response.
+- Keep `.env` out of Git and out of public logs.
+- Keep `CORS_ORIGINS` limited to real application domains.
+- Use HTTPS-only `FRONTEND_BASE_URL` in production.
+- Restrict `GOOGLE_ALLOWED_DOMAINS` when the portal is for one institution.
+- Back up the PostgreSQL volume before upgrades.
+- Monitor worker logs so queued emails and reports do not silently stall.
+
+## License
+
+This project is released under the license in `LICENSE`.
