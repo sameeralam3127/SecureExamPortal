@@ -6,6 +6,18 @@ PostgreSQL persistence, a database-backed background worker, an Nginx edge
 proxy, and a Vite React frontend, with Docker Compose workflows for development
 and production-style deployments.
 
+## Latest Changes
+
+Last updated: June 25, 2026
+
+- Hardened production authentication settings with stricter secret, token
+  lifetime, CORS, database URL, and frontend URL validation.
+- Added configurable auth rate limiting and Google sign-in domain allowlisting.
+- Expanded Nginx deployment support with security headers, API/auth rate
+  limits, ACME challenge handling, and an optional Let's Encrypt TLS config.
+- Documented the HTTPS production runbook, certificate renewal flow, and
+  production secret rotation guidance.
+
 ## Features
 
 - Student registration, password login, production-validated bearer-token sessions, and optional Google sign-in.
