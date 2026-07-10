@@ -2,20 +2,45 @@
 
 ## Supported Versions
 
-Use this section to tell people about which versions of your project are
-currently being supported with security updates.
+At this time, SecureExamPortal is under active development and does not maintain separate supported release branches.
 
-| Version | Supported          |
-| ------- | ------------------ |
-| 5.1.x   | :white_check_mark: |
-| 5.0.x   | :x:                |
-| 4.0.x   | :white_check_mark: |
-| < 4.0   | :x:                |
+Security fixes are applied to the latest version available in the repository.
+
+| Version                     | Supported |
+| --------------------------- | --------- |
+| Main Branch (latest)        | ✅         |
+| Previous snapshots/releases | ❌         |
+
+Users are encouraged to use the latest code from the default branch to receive security updates and bug fixes.
+
+---
 
 ## Reporting a Vulnerability
 
-Use this section to tell people how to report a vulnerability.
+The security of SecureExamPortal is taken seriously. If you discover a vulnerability, please report it responsibly.
 
-Tell them where to go, how often they can expect to get an update on a
-reported vulnerability, what to expect if the vulnerability is accepted or
-declined, etc.
+### Please Do Not
+
+* Open a public GitHub issue for security vulnerabilities.
+* Disclose vulnerabilities publicly before they have been addressed.
+* Share exploit details that could impact users.
+
+### How to Report
+
+Please include:
+
+* Vulnerability description
+* Steps to reproduce
+* Impact assessment
+* Affected components
+* Suggested mitigation (if available)
+
+You can report vulnerabilities through GitHub Security Advisories or by contacting the maintainer directly.
+
+### Response Timeline
+
+* Acknowledgement: within 72 hours
+* Initial assessment: within 7 days
+* Remediation timeline: based on severity and complexity
+
+Thank you for helping keep SecureExamPortal secure.
