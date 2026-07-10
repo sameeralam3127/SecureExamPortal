@@ -15,6 +15,8 @@ proxy, and a Vite React frontend.
 
 - Student registration, password login, bearer-token sessions, and optional
   Google Identity Services sign-in.
+- Enforced password strength, self-service password reset, and sign-out that
+  revokes existing sessions everywhere.
 - Role-based admin and student dashboards.
 - Admin student management, including single-student creation and CSV-style
   bulk upload.
@@ -255,6 +257,30 @@ GOOGLE_ALLOWED_DOMAINS=[]
 > Configure Google authorized JavaScript origins for the exact production
 > domain that users open in the browser.
 
+## Authentication And Account Security
+
+- Passwords are hashed with salted PBKDF2-HMAC-SHA256 and must be at least 8
+  characters with letters and numbers. The policy is enforced on registration,
+  admin-created accounts, and password resets.
+- Access tokens are stateless and carry a per-user token version. Signing out
+  (`POST /api/v1/auth/logout`) or resetting a password bumps that version, which
+  immediately revokes every previously issued token for that user.
+- Google sign-in accounts are provider-managed: they are stored with a random,
+  unguessable password and cannot be authenticated through the password-login
+  endpoint.
+- Self-service password reset:
+
+  ```text
+  POST /api/v1/auth/password-reset/request   # body: {"email": "..."}
+  POST /api/v1/auth/password-reset/confirm   # body: {"token": "...", "new_password": "..."}
+  ```
+
+  The request endpoint always returns the same response whether or not the
+  account exists, to avoid leaking which emails are registered. Reset tokens are
+  single-use, hashed at rest, and expire after 30 minutes. When SMTP is not
+  configured, the reset link is written to the worker log so the flow stays
+  testable in development.
+
 ## Email And Background Jobs
 
 Assignment notifications and submitted-attempt reports are stored in the
@@ -289,9 +315,18 @@ Backend:
 cd backend
 python -m venv .venv
 source .venv/bin/activate
-pip install -r requirements.txt
+pip install -r requirements-dev.txt
 uvicorn app.main:app --reload
+
+# Lint and run the test suite (used by CI)
+ruff check .
+pytest
 ```
+
+The backend test suite runs against a throwaway SQLite database, so it needs no
+running PostgreSQL instance. Both the backend suite and the frontend
+`lint / test / build` checks run automatically on every push and pull request
+via the `CI` GitHub Actions workflow.
 
 Worker:
 

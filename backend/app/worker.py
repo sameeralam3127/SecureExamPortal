@@ -3,7 +3,6 @@ import os
 
 from app.services.job_queue import run_worker
 
-
 logging.basicConfig(level=os.getenv("LOG_LEVEL", "INFO"))
 
 

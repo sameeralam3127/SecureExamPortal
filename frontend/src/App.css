@@ -1089,3 +1089,68 @@ button:focus-visible {
     grid-template-columns: 1fr;
   }
 }
+
+/* --- Admin management refinements (modular dashboard) --- */
+.admin-stack {
+  display: grid;
+  gap: 18px;
+}
+
+.panel-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
+.inline-search {
+  min-height: 40px;
+  min-width: 220px;
+  max-width: 320px;
+  flex: 1 1 220px;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: var(--surface);
+  color: var(--text);
+  font-family: inherit;
+}
+
+.inline-search:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 1px;
+}
+
+.pill-badge {
+  padding: 5px 12px;
+  border-radius: 999px;
+  background: var(--surface-muted);
+  color: var(--muted);
+  font-size: 0.8rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.ellipsis {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mini-btn.danger {
+  background: rgba(199, 50, 50, 0.1);
+  color: var(--danger);
+  border-radius: 7px;
+  padding: 7px 14px;
+}
+
+.mini-btn.danger:hover {
+  background: rgba(199, 50, 50, 0.18);
+}
+
+.mini-btn.danger:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}

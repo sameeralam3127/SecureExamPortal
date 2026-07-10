@@ -1,8 +1,6 @@
 from collections.abc import Generator
 
-from sqlalchemy import create_engine
-from sqlalchemy import inspect, text
-from sqlalchemy import select
+from sqlalchemy import create_engine, inspect, select, text
 from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
 
 from app.config.base import get_settings
@@ -34,6 +32,7 @@ def init_db() -> None:
     _ = (exam_models, job_models)
     Base.metadata.create_all(bind=engine)
     ensure_exam_security_columns()
+    ensure_user_auth_columns()
 
     with SessionLocal() as db:
         if not settings.initial_admin_username:
@@ -79,3 +78,25 @@ def ensure_exam_security_columns() -> None:
             if column_name in existing_columns:
                 continue
             connection.execute(text(f"ALTER TABLE portal_exams ADD COLUMN {column_name} {definition}"))
+
+
+def ensure_user_auth_columns() -> None:
+    inspector = inspect(engine)
+    if not inspector.has_table("portal_users"):
+        return
+
+    existing_columns = {column["name"] for column in inspector.get_columns("portal_users")}
+    auth_columns = {
+        "auth_provider": "VARCHAR(20) NOT NULL DEFAULT 'password'",
+        "email_verified": "BOOLEAN NOT NULL DEFAULT FALSE",
+        "token_version": "INTEGER NOT NULL DEFAULT 0",
+        "reset_token_hash": "VARCHAR(255)",
+        "reset_token_expires_at": "TIMESTAMPTZ",
+    }
+    with engine.begin() as connection:
+        for column_name, definition in auth_columns.items():
+            if column_name in existing_columns:
+                continue
+            connection.execute(
+                text(f"ALTER TABLE portal_users ADD COLUMN {column_name} {definition}")
+            )

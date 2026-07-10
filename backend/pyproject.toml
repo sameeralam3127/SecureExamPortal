@@ -1,0 +1,17 @@
+[project]
+name = "secure-exam-portal-backend"
+version = "1.0.0"
+description = "FastAPI backend for the Secure Exam Portal."
+requires-python = ">=3.11"
+
+[tool.ruff]
+line-length = 110
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "W", "UP", "B"]
+ignore = ["B008"]  # FastAPI Depends() in defaults is idiomatic
+
+[tool.pytest.ini_options]
+addopts = "-q"
+testpaths = ["tests"]

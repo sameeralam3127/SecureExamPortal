@@ -140,6 +140,22 @@ def create_students_bulk(
     return students
 
 
+@router.delete("/students/{student_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_student(
+    student_id: int,
+    _: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+) -> None:
+    student = db.get(User, student_id)
+    if student is None or student.role != UserRole.student:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Student not found",
+        )
+    db.delete(student)
+    db.commit()
+
+
 @router.get("/exams", response_model=list[ExamRead])
 def list_exams(
     _: User = Depends(require_admin),
@@ -204,6 +220,22 @@ def create_exams_bulk(
     for exam in exams:
         db.refresh(exam)
     return exams
+
+
+@router.delete("/exams/{exam_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_exam(
+    exam_id: int,
+    _: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+) -> None:
+    exam = db.get(Exam, exam_id)
+    if exam is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Exam not found",
+        )
+    db.delete(exam)
+    db.commit()
 
 
 @router.post("/assignments", response_model=AssignmentRead, status_code=status.HTTP_201_CREATED)
@@ -284,6 +316,22 @@ def list_assignments(
             )
         )
     return result
+
+
+@router.delete("/assignments/{assignment_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_assignment(
+    assignment_id: int,
+    _: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+) -> None:
+    assignment = db.get(ExamAssignment, assignment_id)
+    if assignment is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Assignment not found",
+        )
+    db.delete(assignment)
+    db.commit()
 
 
 @router.get("/jobs", response_model=list[BackgroundJobRead])

@@ -1,148 +1,134 @@
-import { useEffect, useMemo, useState } from 'react'
-import './App.css'
-import { getAdminDashboardModel, getStudentDashboardModel } from './dashboardModel'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || window.location.origin
-const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || ''
-const defaultQuestion = {
-  question_text: '',
-  option_a: '',
-  option_b: '',
-  option_c: '',
-  option_d: '',
-  correct_option: 'A',
-  marks: 1,
-}
-const userBulkTemplate = 'Full Name,username,email,password'
-const examBulkTemplate = JSON.stringify(
-  {
-    exams: [
-      {
-        title: 'Computer Basics',
-        description: 'Introductory MCQ exam',
-        duration_minutes: 20,
-        block_clipboard: true,
-        block_context_menu: true,
-        block_inspect_shortcuts: true,
-        enforce_fullscreen: false,
-        track_focus_loss: true,
-        questions: [
-          {
-            question_text: 'CPU stands for?',
-            option_a: 'Central Processing Unit',
-            option_b: 'Computer Personal Unit',
-            option_c: 'Central Power Utility',
-            option_d: 'Control Process User',
-            correct_option: 'A',
-            marks: 2,
-          },
-        ],
-      },
-    ],
-  },
-  null,
-  2,
-)
+import './App.css'
+import AdminDashboard from './components/admin/AdminDashboard.jsx'
+import AuthView from './components/AuthView.jsx'
+import StudentDashboard from './components/student/StudentDashboard.jsx'
+import { createApiClient } from './lib/api.js'
+import { GOOGLE_CLIENT_ID } from './lib/constants.js'
+
+const SESSION_KEY = 'secureExamSession'
 
 function App({ route = '/login', onNavigate = () => {} }) {
   const [session, setSession] = useState(() => {
-    const saved = localStorage.getItem('secureExamSession')
+    const saved = localStorage.getItem(SESSION_KEY)
     return saved ? JSON.parse(saved) : null
   })
-  const [loginForm, setLoginForm] = useState({ username: '', password: '' })
-  const [registerForm, setRegisterForm] = useState({
-    full_name: '',
-    username: '',
-    email: '',
-    password: '',
-  })
   const [message, setMessage] = useState('')
-  const [activeTab, setActiveTab] = useState('dashboard')
 
-  const [adminStats, setAdminStats] = useState(null)
-  const [students, setStudents] = useState([])
-  const [exams, setExams] = useState([])
-  const [assignments, setAssignments] = useState([])
-  const [securityIncidents, setSecurityIncidents] = useState([])
-  const [studentForm, setStudentForm] = useState({
-    full_name: '',
-    username: '',
-    email: '',
-    password: '',
-    role: 'student',
-  })
-  const [bulkUsersText, setBulkUsersText] = useState(userBulkTemplate)
-  const [examForm, setExamForm] = useState({
-    title: '',
-    description: '',
-    duration_minutes: 30,
-    block_clipboard: true,
-    block_context_menu: true,
-    block_inspect_shortcuts: true,
-    enforce_fullscreen: false,
-    track_focus_loss: true,
-    questions: [{ ...defaultQuestion }],
-  })
-  const [bulkExamsText, setBulkExamsText] = useState(examBulkTemplate)
-  const [assignmentForm, setAssignmentForm] = useState({ exam_id: '', student_id: '' })
+  const api = useMemo(() => createApiClient(() => session?.access_token), [session])
 
-  const [studentStats, setStudentStats] = useState(null)
-  const [studentAssignments, setStudentAssignments] = useState([])
-  const [history, setHistory] = useState([])
-  const [liveExam, setLiveExam] = useState(null)
-  const [answers, setAnswers] = useState({})
-  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0)
-  const [isReviewMode, setIsReviewMode] = useState(false)
-  const [autosaveState, setAutosaveState] = useState('')
-  const [secondsLeft, setSecondsLeft] = useState(0)
-  const [securityWarning, setSecurityWarning] = useState('')
-
-  const authHeaders = useMemo(
-    () => ({
-      'Content-Type': 'application/json',
-      Authorization: session?.access_token ? `Bearer ${session.access_token}` : '',
-    }),
-    [session],
+  const startSession = useCallback(
+    (data) => {
+      setSession(data)
+      localStorage.setItem(SESSION_KEY, JSON.stringify(data))
+      setMessage('')
+    },
+    [],
   )
 
-  const apiRequest = async (path, options = {}) => {
-    const response = await fetch(`${API_BASE_URL}${path}`, {
-      ...options,
-      headers: { ...authHeaders, ...(options.headers || {}) },
-    })
-    const data = await response.json().catch(() => ({}))
-    if (!response.ok) {
-      throw new Error(data.detail || 'Request failed')
+  const handleLogin = useCallback(
+    async (form) => {
+      try {
+        startSession(await api('/api/v1/auth/login', { method: 'POST', body: JSON.stringify(form) }))
+      } catch (error) {
+        setMessage(error.message)
+      }
+    },
+    [api, startSession],
+  )
+
+  const handleRegister = useCallback(
+    async (form, onDone) => {
+      try {
+        startSession(
+          await api('/api/v1/auth/register', { method: 'POST', body: JSON.stringify(form) }),
+        )
+        onDone?.()
+      } catch (error) {
+        setMessage(error.message)
+      }
+    },
+    [api, startSession],
+  )
+
+  const handleForgotPassword = useCallback(
+    async (email, onDone) => {
+      try {
+        const data = await api('/api/v1/auth/password-reset/request', {
+          method: 'POST',
+          body: JSON.stringify({ email }),
+        })
+        setMessage(data.detail || 'If that account exists, a reset link has been sent.')
+        onDone?.()
+      } catch (error) {
+        setMessage(error.message)
+      }
+    },
+    [api],
+  )
+
+  const handleResetPassword = useCallback(
+    async (newPassword) => {
+      const token = new URLSearchParams(window.location.search).get('token') || ''
+      try {
+        const data = await api('/api/v1/auth/password-reset/confirm', {
+          method: 'POST',
+          body: JSON.stringify({ token, new_password: newPassword }),
+        })
+        setMessage(data.detail || 'Password updated. Please sign in.')
+        onNavigate('/login')
+      } catch (error) {
+        setMessage(error.message)
+      }
+    },
+    [api, onNavigate],
+  )
+
+  const logout = useCallback(async () => {
+    try {
+      await api('/api/v1/auth/logout', { method: 'POST' })
+    } catch {
+      // Ignore network/auth errors; local sign-out must always proceed.
     }
-    return data
-  }
+    setSession(null)
+    localStorage.removeItem(SESSION_KEY)
+    setMessage('')
+    onNavigate('/login')
+  }, [api, onNavigate])
 
-  const initializeGoogleAuth = () => {
-    if (session || route !== '/login' || !GOOGLE_CLIENT_ID || !window.google?.accounts?.id) {
-      return false
-    }
+  // Keep the address bar in sync with the signed-in role.
+  useEffect(() => {
+    if (!session) return
+    onNavigate(session.user.role === 'admin' ? '/admin/dashboard' : '/student/dashboard')
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session])
 
-    window.google.accounts.id.initialize({
-      client_id: GOOGLE_CLIENT_ID,
-      callback: async (response) => {
-        try {
-          const data = await apiRequest('/api/v1/auth/google', {
-            method: 'POST',
-            body: JSON.stringify({ credential: response.credential }),
-          })
-          setSession(data)
-          localStorage.setItem('secureExamSession', JSON.stringify(data))
-          setMessage('')
-        } catch (error) {
-          setMessage(error.message)
-        }
-      },
-    })
+  // Render the Google Identity button on the login screen.
+  useEffect(() => {
+    if (session || route !== '/login' || !GOOGLE_CLIENT_ID) return undefined
 
-    const googleButton = document.getElementById('googleSignInButton')
-    if (googleButton) {
-      googleButton.innerHTML = ''
-      window.google.accounts.id.renderButton(googleButton, {
+    const tryInit = () => {
+      if (!window.google?.accounts?.id) return false
+      window.google.accounts.id.initialize({
+        client_id: GOOGLE_CLIENT_ID,
+        callback: async (response) => {
+          try {
+            startSession(
+              await api('/api/v1/auth/google', {
+                method: 'POST',
+                body: JSON.stringify({ credential: response.credential }),
+              }),
+            )
+          } catch (error) {
+            setMessage(error.message)
+          }
+        },
+      })
+      const button = document.getElementById('googleSignInButton')
+      if (!button) return false
+      button.innerHTML = ''
+      window.google.accounts.id.renderButton(button, {
         theme: 'outline',
         size: 'large',
         width: '320',
@@ -150,1325 +136,44 @@ function App({ route = '/login', onNavigate = () => {} }) {
       return true
     }
 
-    return false
-  }
-
-  const loadAdminData = async () => {
-    const [statsData, studentsData, examsData, assignmentData, incidentData] = await Promise.all([
-      apiRequest('/api/v1/admin/dashboard'),
-      apiRequest('/api/v1/admin/students'),
-      apiRequest('/api/v1/admin/exams'),
-      apiRequest('/api/v1/admin/assignments'),
-      apiRequest('/api/v1/admin/security-incidents'),
-    ])
-    setAdminStats(statsData)
-    setStudents(studentsData)
-    setExams(examsData)
-    setAssignments(assignmentData)
-    setSecurityIncidents(incidentData)
-  }
-
-  const loadStudentData = async () => {
-    const [statsData, assignmentData, historyData] = await Promise.all([
-      apiRequest('/api/v1/student/dashboard'),
-      apiRequest('/api/v1/student/assignments'),
-      apiRequest('/api/v1/student/attempts/history'),
-    ])
-    setStudentStats(statsData)
-    setStudentAssignments(assignmentData)
-    setHistory(historyData)
-  }
-
-  useEffect(() => {
-    if (!session) return
-    const loader = session.user.role === 'admin' ? loadAdminData : loadStudentData
-    loader().catch((error) => setMessage(error.message))
-    onNavigate(session.user.role === 'admin' ? '/admin/dashboard' : '/student/dashboard')
-  }, [session])
-
-  useEffect(() => {
-    if (session || route !== '/login' || !GOOGLE_CLIENT_ID) return
-
-    if (initializeGoogleAuth()) {
-      return
-    }
-
+    if (tryInit()) return undefined
     const pollId = window.setInterval(() => {
-      if (initializeGoogleAuth()) {
-        window.clearInterval(pollId)
-      }
+      if (tryInit()) window.clearInterval(pollId)
     }, 300)
-
-    window.setTimeout(() => window.clearInterval(pollId), 5000)
-    return () => window.clearInterval(pollId)
-  }, [session, route])
-
-  useEffect(() => {
-    if (!liveExam || secondsLeft <= 0) return
-    const timerId = window.setInterval(() => {
-      setSecondsLeft((value) => Math.max(value - 1, 0))
-    }, 1000)
-    return () => window.clearInterval(timerId)
-  }, [liveExam, secondsLeft])
-
-  useEffect(() => {
-    if (liveExam && secondsLeft === 0) {
-      submitExam()
-    }
-  }, [secondsLeft])
-
-  useEffect(() => {
-    if (!liveExam) return
-
-    const logIncident = (incidentType, detail) => {
-      setSecurityWarning(detail)
-      apiRequest(`/api/v1/student/attempts/${liveExam.attempt_id}/security-incidents`, {
-        method: 'POST',
-        body: JSON.stringify({ incident_type: incidentType, detail }),
-      }).catch((error) => setAutosaveState(`Security log failed: ${error.message}`))
-    }
-
-    const blockEvent = (event, incidentType, detail) => {
-      event.preventDefault()
-      logIncident(incidentType, detail)
-    }
-
-    const handleClipboard = (event) => {
-      if (liveExam.block_clipboard) {
-        blockEvent(event, event.type, `${event.type} was blocked during the live exam.`)
-      }
-    }
-
-    const handleContextMenu = (event) => {
-      if (liveExam.block_context_menu) {
-        blockEvent(event, 'context_menu', 'Right-click was blocked during the live exam.')
-      }
-    }
-
-    const handleKeyDown = (event) => {
-      if (!liveExam.block_inspect_shortcuts) return
-      const key = event.key.toLowerCase()
-      const isInspectShortcut =
-        event.key === 'F12' ||
-        (event.ctrlKey && event.shiftKey && ['i', 'j', 'c'].includes(key)) ||
-        (event.metaKey && event.altKey && ['i', 'j', 'c'].includes(key)) ||
-        ((event.ctrlKey || event.metaKey) && key === 'u')
-      if (isInspectShortcut) {
-        blockEvent(event, 'inspect_shortcut', 'Developer-tool shortcut was blocked during the live exam.')
-      }
-    }
-
-    const handleVisibilityChange = () => {
-      if (liveExam.track_focus_loss && document.visibilityState === 'hidden') {
-        logIncident('tab_switch', 'Tab switch or page hide detected during the live exam.')
-      }
-    }
-
-    const handleBlur = () => {
-      if (liveExam.track_focus_loss) {
-        logIncident('window_blur', 'Exam window lost focus during the live exam.')
-      }
-    }
-
-    const handleFullscreenChange = () => {
-      if (liveExam.enforce_fullscreen && !document.fullscreenElement) {
-        logIncident('fullscreen_exit', 'Fullscreen mode was exited during the live exam.')
-      }
-    }
-
-    document.addEventListener('copy', handleClipboard)
-    document.addEventListener('cut', handleClipboard)
-    document.addEventListener('paste', handleClipboard)
-    document.addEventListener('contextmenu', handleContextMenu)
-    document.addEventListener('keydown', handleKeyDown)
-    document.addEventListener('visibilitychange', handleVisibilityChange)
-    document.addEventListener('fullscreenchange', handleFullscreenChange)
-    window.addEventListener('blur', handleBlur)
-
+    const timeoutId = window.setTimeout(() => window.clearInterval(pollId), 5000)
     return () => {
-      document.removeEventListener('copy', handleClipboard)
-      document.removeEventListener('cut', handleClipboard)
-      document.removeEventListener('paste', handleClipboard)
-      document.removeEventListener('contextmenu', handleContextMenu)
-      document.removeEventListener('keydown', handleKeyDown)
-      document.removeEventListener('visibilitychange', handleVisibilityChange)
-      document.removeEventListener('fullscreenchange', handleFullscreenChange)
-      window.removeEventListener('blur', handleBlur)
+      window.clearInterval(pollId)
+      window.clearTimeout(timeoutId)
     }
-  }, [liveExam, authHeaders])
+  }, [session, route, api, startSession])
 
-  const handleLogin = async (event) => {
-    event.preventDefault()
-    try {
-      const data = await apiRequest('/api/v1/auth/login', {
-        method: 'POST',
-        body: JSON.stringify(loginForm),
-      })
-      setSession(data)
-      localStorage.setItem('secureExamSession', JSON.stringify(data))
-      setActiveTab('dashboard')
-      setMessage('')
-    } catch (error) {
-      setMessage(error.message)
-    }
-  }
-
-  const logout = () => {
-    setSession(null)
-    setLiveExam(null)
-    setAnswers({})
-    setActiveTab('dashboard')
-    localStorage.removeItem('secureExamSession')
-    onNavigate('/login')
-  }
-
-  const handleRegister = async (event) => {
-    event.preventDefault()
-    try {
-      const data = await apiRequest('/api/v1/auth/register', {
-        method: 'POST',
-        body: JSON.stringify(registerForm),
-      })
-      setSession(data)
-      localStorage.setItem('secureExamSession', JSON.stringify(data))
-      setMessage('Registration successful')
-      setRegisterForm({ full_name: '', username: '', email: '', password: '' })
-    } catch (error) {
-      setMessage(error.message)
-    }
-  }
-
-  const createStudent = async (event) => {
-    event.preventDefault()
-    try {
-      await apiRequest('/api/v1/admin/students', {
-        method: 'POST',
-        body: JSON.stringify(studentForm),
-      })
-      setStudentForm({ full_name: '', username: '', email: '', password: '', role: 'student' })
-      setMessage('Student created successfully')
-      loadAdminData()
-    } catch (error) {
-      setMessage(error.message)
-    }
-  }
-
-  const createStudentsBulk = async () => {
-    try {
-      const users = bulkUsersText
-        .split('\n')
-        .map((line) => line.trim())
-        .filter(Boolean)
-        .map((line) => {
-          const [fullName, username, email, password] = line.split(',').map((item) => item.trim())
-          return { full_name: fullName, username, email, password, role: 'student' }
-        })
-
-      await apiRequest('/api/v1/admin/students/bulk', {
-        method: 'POST',
-        body: JSON.stringify({ users }),
-      })
-      setMessage(`${users.length} students added in bulk`)
-      loadAdminData()
-    } catch (error) {
-      setMessage(error.message)
-    }
-  }
-
-  const updateExamQuestion = (index, field, value) => {
-    setExamForm((current) => ({
-      ...current,
-      questions: current.questions.map((question, questionIndex) =>
-        questionIndex === index ? { ...question, [field]: value } : question,
-      ),
-    }))
-  }
-
-  const createExam = async (event) => {
-    event.preventDefault()
-    try {
-      await apiRequest('/api/v1/admin/exams', {
-        method: 'POST',
-        body: JSON.stringify({
-          ...examForm,
-          duration_minutes: Number(examForm.duration_minutes),
-          questions: examForm.questions.map((question) => ({
-            ...question,
-            marks: Number(question.marks),
-          })),
-        }),
-      })
-      setExamForm({
-        title: '',
-        description: '',
-        duration_minutes: 30,
-        block_clipboard: true,
-        block_context_menu: true,
-        block_inspect_shortcuts: true,
-        enforce_fullscreen: false,
-        track_focus_loss: true,
-        questions: [{ ...defaultQuestion }],
-      })
-      setMessage('Exam created successfully')
-      loadAdminData()
-    } catch (error) {
-      setMessage(error.message)
-    }
-  }
-
-  const createExamsBulk = async () => {
-    try {
-      const payload = JSON.parse(bulkExamsText)
-      await apiRequest('/api/v1/admin/exams/bulk', {
-        method: 'POST',
-        body: JSON.stringify(payload),
-      })
-      setMessage(`${payload.exams?.length || 0} exams added in bulk`)
-      loadAdminData()
-    } catch (error) {
-      setMessage(error.message)
-    }
-  }
-
-  const assignExam = async (event) => {
-    event.preventDefault()
-    try {
-      await apiRequest('/api/v1/admin/assignments', {
-        method: 'POST',
-        body: JSON.stringify({
-          exam_id: Number(assignmentForm.exam_id),
-          student_id: Number(assignmentForm.student_id),
-        }),
-      })
-      setAssignmentForm({ exam_id: '', student_id: '' })
-      setMessage('Exam assigned successfully')
-      loadAdminData()
-    } catch (error) {
-      setMessage(error.message)
-    }
-  }
-
-  const startExam = async (assignmentId) => {
-    try {
-      const data = await apiRequest(`/api/v1/student/assignments/${assignmentId}/start`, {
-        method: 'POST',
-      })
-      setLiveExam(data)
-      setSecurityWarning('')
-      setAnswers(
-        Object.fromEntries(
-          (data.saved_answers || []).map((answer) => [answer.question_id, answer.selected_option]),
-        ),
-      )
-      setCurrentQuestionIndex(data.current_question_index || 0)
-      setIsReviewMode(false)
-      setAutosaveState('')
-      setSecondsLeft(data.duration_minutes * 60)
-      setActiveTab('exam')
-      if (data.enforce_fullscreen && document.documentElement.requestFullscreen) {
-        document.documentElement.requestFullscreen().catch(() => {
-          setSecurityWarning('Fullscreen is required for this exam. Use the browser prompt to enter fullscreen.')
-        })
-      }
-    } catch (error) {
-      setMessage(error.message)
-    }
-  }
-
-  const autosaveAnswer = async (questionId, selectedOption) => {
-    if (!liveExam) return
-    const nextAnswers = { ...answers, [questionId]: selectedOption }
-    setAnswers(nextAnswers)
-    setAutosaveState('Saving...')
-    try {
-      await apiRequest(`/api/v1/student/attempts/${liveExam.attempt_id}/answers`, {
-        method: 'PUT',
-        body: JSON.stringify({
-          answers: Object.entries(nextAnswers).map(([savedQuestionId, savedOption]) => ({
-            question_id: Number(savedQuestionId),
-            selected_option: savedOption,
-          })),
-        }),
-      })
-      setAutosaveState('All answers saved')
-    } catch (error) {
-      setAutosaveState('Autosave failed')
-      setMessage(error.message)
-    }
-  }
-
-  const submitExam = async () => {
-    if (!liveExam) return
-    try {
-      const result = await apiRequest(`/api/v1/student/attempts/${liveExam.attempt_id}/submit`, {
-        method: 'POST',
-        body: JSON.stringify({
-          answers: Object.entries(answers).map(([questionId, selectedOption]) => ({
-            question_id: Number(questionId),
-            selected_option: selectedOption,
-          })),
-        }),
-      })
-      setMessage(`Exam submitted. Score ${result.score}/${result.total_marks} (${result.percentage}%)`)
-      setLiveExam(null)
-      setAnswers({})
-      setSecurityWarning('')
-      setCurrentQuestionIndex(0)
-      setIsReviewMode(false)
-      setAutosaveState('')
-      setSecondsLeft(0)
-      setActiveTab('reports')
-      loadStudentData()
-    } catch (error) {
-      setMessage(error.message)
-    }
-  }
-
-  const formatTimer = (value) => {
-    const minutes = Math.floor(value / 60)
-    const seconds = value % 60
-    return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
-  }
-
-  const currentQuestion = liveExam?.questions?.[currentQuestionIndex] || null
-  const answeredCount = liveExam
-    ? liveExam.questions.filter((question) => Boolean(answers[question.id])).length
-    : 0
-  const furthestAccessibleIndex = liveExam
-    ? Math.min(
-        liveExam.questions.findIndex((question) => !answers[question.id]) === -1
-          ? liveExam.question_count - 1
-          : liveExam.questions.findIndex((question) => !answers[question.id]),
-        liveExam.question_count - 1,
-      )
-    : 0
-
-  if (!session) {
+  if (!session || route === '/reset-password') {
     return (
-      <main className="login-shell">
-        <aside className="login-hero" aria-hidden="true">
-          <div className="hero-kicker">Trusted assessment workspace</div>
-          <h1>Secure exams, calmer operations.</h1>
-          <p>
-            Run assignments, monitor completion, and give students a focused testing experience.
-          </p>
-          <div className="hero-stats">
-            <span>Live autosave</span>
-            <span>Role dashboards</span>
-            <span>Bulk setup</span>
-          </div>
-        </aside>
-        <section className="login-card">
-          <div className="brand-mark">
-            <span className="brand-icon">S</span>
-            <span>Secure Exam Portal</span>
-          </div>
-          <div className="auth-tab-row">
-            <button
-              type="button"
-              className={route !== '/register' ? 'auth-tab active' : 'auth-tab'}
-              onClick={() => onNavigate('/login')}
-            >
-              Login
-            </button>
-            <button
-              type="button"
-              className={route === '/register' ? 'auth-tab active' : 'auth-tab'}
-              onClick={() => onNavigate('/register')}
-            >
-              Register
-            </button>
-          </div>
-
-          {route === '/register' ? (
-            <>
-              <h1>Create student account</h1>
-              <p>Register and you will be redirected to the student dashboard.</p>
-              <form className="form-stack" onSubmit={handleRegister}>
-                <input
-                  value={registerForm.full_name}
-                  onChange={(event) =>
-                    setRegisterForm((current) => ({
-                      ...current,
-                      full_name: event.target.value,
-                    }))
-                  }
-                  placeholder="Full name"
-                />
-                <input
-                  value={registerForm.username}
-                  onChange={(event) =>
-                    setRegisterForm((current) => ({
-                      ...current,
-                      username: event.target.value,
-                    }))
-                  }
-                  placeholder="Username"
-                />
-                <input
-                  type="email"
-                  value={registerForm.email}
-                  onChange={(event) =>
-                    setRegisterForm((current) => ({ ...current, email: event.target.value }))
-                  }
-                  placeholder="Email"
-                />
-                <input
-                  type="password"
-                  value={registerForm.password}
-                  onChange={(event) =>
-                    setRegisterForm((current) => ({
-                      ...current,
-                      password: event.target.value,
-                    }))
-                  }
-                  placeholder="Password"
-                />
-                {message ? <p className="alert-message">{message}</p> : null}
-                <button className="action-btn blue" type="submit">
-                  Create Account
-                </button>
-              </form>
-            </>
-          ) : (
-            <>
-              <h1>Login to continue</h1>
-              <p>Use your portal credentials or Google sign-in.</p>
-              <form className="form-stack" onSubmit={handleLogin}>
-                <input
-                  value={loginForm.username}
-                  onChange={(event) =>
-                    setLoginForm((current) => ({ ...current, username: event.target.value }))
-                  }
-                  placeholder="Username"
-                />
-                <input
-                  type="password"
-                  value={loginForm.password}
-                  onChange={(event) =>
-                    setLoginForm((current) => ({ ...current, password: event.target.value }))
-                  }
-                  placeholder="Password"
-                />
-                {message ? <p className="alert-message">{message}</p> : null}
-                <button className="action-btn blue" type="submit">
-                  Login
-                </button>
-              </form>
-              <div className="google-login-wrap">
-                {GOOGLE_CLIENT_ID ? (
-                  <div id="googleSignInButton" />
-                ) : (
-                  <p className="google-disabled">
-                    Add <code>VITE_GOOGLE_CLIENT_ID</code> to enable Google login.
-                  </p>
-                )}
-              </div>
-            </>
-          )}
-        </section>
-      </main>
+      <AuthView
+        route={route}
+        onNavigate={onNavigate}
+        message={message}
+        onLogin={handleLogin}
+        onRegister={handleRegister}
+        onForgotPassword={handleForgotPassword}
+        onResetPassword={handleResetPassword}
+      />
     )
   }
 
-  return session.user.role === 'admin'
-    ? renderAdminView()
-    : renderStudentView()
-
-  function renderAdminView() {
-    const {
-      pendingAssignments,
-      completedAssignments,
-      latestAssignments,
-      latestIncidents,
-      completionRate,
-      securityReviewCount,
-      averageScore,
-      topScore,
-    } = getAdminDashboardModel(adminStats, assignments, securityIncidents)
-
-    return (
-      <main className="portal-page">
-        {renderTopbar(['dashboard', 'exams', 'assignments', 'users', 'reports'])}
-        <section className="welcome-banner">
-          <div>
-            <h1>Admin Dashboard</h1>
-            <p>Monitor exams, assignments, student activity, and security events.</p>
-          </div>
-          <div className="banner-actions">
-            <span className="role-chip">Admin Console</span>
-            <button className="ghost-btn" type="button" onClick={loadAdminData}>
-              Refresh
-            </button>
-          </div>
-        </section>
-
-        <section className="metric-grid">
-          <MetricCard color="blue" count={adminStats?.total_students || 0} label="Students" icon="ST" helper="Active learner records" />
-          <MetricCard color="green" count={adminStats?.total_exams || 0} label="Exams" icon="EX" helper={`${adminStats?.total_assignments || 0} assignments`} />
-          <MetricCard color="cyan" count={`${completionRate}%`} label="Completion Rate" icon="CR" helper={`${pendingAssignments.length} pending`} />
-          <MetricCard color="orange" count={adminStats?.completed_attempts || 0} label="Submitted Attempts" icon="SA" helper={`${averageScore}% average`} />
-        </section>
-
-        {message ? <div className="notice-bar">{message}</div> : null}
-
-        <section className="white-panel">
-          <h2>Quick Actions</h2>
-          <div className="quick-grid">
-            <button className="action-btn blue" onClick={() => setActiveTab('exams')} type="button">
-              Create New Exam
-            </button>
-            <button className="action-btn green" onClick={() => setActiveTab('users')} type="button">
-              Manage Users
-            </button>
-            <button className="action-btn cyan" onClick={() => setActiveTab('reports')} type="button">
-              View Reports
-            </button>
-            <button className="action-btn yellow" onClick={() => setActiveTab('assignments')} type="button">
-              Assign Exam
-            </button>
-          </div>
-        </section>
-
-        {activeTab === 'dashboard' && (
-          <section className="dashboard-grid dashboard-grid-modern">
-            <article className="white-panel dashboard-panel command-panel">
-              <PanelHeader eyebrow="Today" title="Exam Operations" action={`${completionRate}% complete`} />
-              <div className="progress-block">
-                <div className="progress-copy">
-                  <strong>{completedAssignments.length} of {assignments.length}</strong>
-                  <span>assignments submitted</span>
-                </div>
-                <ProgressBar value={completionRate} tone="success" />
-              </div>
-              <div className="status-list status-list-modern">
-                <div>
-                  <span>Pending review</span>
-                  <strong>{pendingAssignments.length}</strong>
-                </div>
-                <div>
-                  <span>Average score</span>
-                  <strong>{averageScore}%</strong>
-                </div>
-                <div>
-                  <span>Highest score</span>
-                  <strong>{topScore}%</strong>
-                </div>
-              </div>
-            </article>
-
-            <article className="white-panel dashboard-panel insight-panel">
-              <PanelHeader eyebrow="Risk" title="Security Watch" action={`${securityReviewCount} recent`} />
-              <div className="incident-score">
-                <strong>{securityIncidents.length}</strong>
-                <span>Total incident logs</span>
-              </div>
-              <div className="list-stack compact-list">
-                {latestIncidents.length ? (
-                  latestIncidents.map((incident) => (
-                    <div className="activity-row" key={`dash-incident-${incident.id}`}>
-                      <span className="activity-dot danger-dot" />
-                      <div>
-                        <strong>{incident.incident_type.replaceAll('_', ' ')}</strong>
-                        <p>{incident.student_name || 'Student'} on {incident.exam_title || 'Exam'}</p>
-                      </div>
-                    </div>
-                  ))
-                ) : (
-                  <p className="helper-text">No security incidents logged.</p>
-                )}
-              </div>
-            </article>
-
-            <article className="white-panel dashboard-panel wide-panel">
-              <PanelHeader eyebrow="Live Feed" title="Recent Assignments" action={`${latestAssignments.length} latest`} />
-              <div className="data-table">
-                <div className="table-row table-head">
-                  <span>Exam</span>
-                  <span>Student</span>
-                  <span>Status</span>
-                  <span>Score</span>
-                </div>
-                {latestAssignments.length ? (
-                  latestAssignments.map((assignment) => (
-                    <div className="table-row" key={`dash-assignment-${assignment.id}`}>
-                      <strong>{assignment.exam_title}</strong>
-                      <span>{assignment.student_name}</span>
-                      <StatusBadge status={assignment.attempt_status || 'pending'} />
-                      <span>{assignment.latest_score ?? '--'}</span>
-                    </div>
-                  ))
-                ) : (
-                  <p className="helper-text">No assignments created yet.</p>
-                )}
-              </div>
-            </article>
-          </section>
-        )}
-
-        {activeTab === 'users' && (
-          <section className="two-grid">
-            <article className="white-panel">
-              <h2>Add Single Student</h2>
-              <form className="form-stack" onSubmit={createStudent}>
-                <input
-                  placeholder="Full name"
-                  value={studentForm.full_name}
-                  onChange={(event) =>
-                    setStudentForm((current) => ({ ...current, full_name: event.target.value }))
-                  }
-                />
-                <input
-                  placeholder="Username"
-                  value={studentForm.username}
-                  onChange={(event) =>
-                    setStudentForm((current) => ({ ...current, username: event.target.value }))
-                  }
-                />
-                <input
-                  placeholder="Email"
-                  type="email"
-                  value={studentForm.email}
-                  onChange={(event) =>
-                    setStudentForm((current) => ({ ...current, email: event.target.value }))
-                  }
-                />
-                <input
-                  placeholder="Password"
-                  type="password"
-                  value={studentForm.password}
-                  onChange={(event) =>
-                    setStudentForm((current) => ({ ...current, password: event.target.value }))
-                  }
-                />
-                <button className="action-btn blue" type="submit">
-                  Save Student
-                </button>
-              </form>
-            </article>
-
-            <article className="white-panel">
-              <h2>Bulk Add Students</h2>
-              <p className="helper-text">One row per student: Full Name, Username, Email, Password</p>
-              <textarea
-                rows="8"
-                value={bulkUsersText}
-                onChange={(event) => setBulkUsersText(event.target.value)}
-              />
-              <button className="action-btn green" type="button" onClick={createStudentsBulk}>
-                Upload Bulk Students
-              </button>
-            </article>
-          </section>
-        )}
-
-        {activeTab === 'exams' && (
-          <section className="two-grid">
-            <article className="white-panel">
-              <h2>Create Exam</h2>
-              <form className="form-stack" onSubmit={createExam}>
-                <div className="inline-fields">
-                  <input
-                    placeholder="Exam title"
-                    value={examForm.title}
-                    onChange={(event) => setExamForm((current) => ({ ...current, title: event.target.value }))}
-                  />
-                  <input
-                    type="number"
-                    min="1"
-                    value={examForm.duration_minutes}
-                    onChange={(event) =>
-                      setExamForm((current) => ({ ...current, duration_minutes: event.target.value }))
-                    }
-                  />
-                </div>
-                <textarea
-                  placeholder="Description"
-                  value={examForm.description}
-                  onChange={(event) =>
-                    setExamForm((current) => ({ ...current, description: event.target.value }))
-                  }
-                />
-                <div className="security-policy-box">
-                  <strong>Security Policies</strong>
-                  <label>
-                    <input
-                      type="checkbox"
-                      checked={examForm.block_clipboard}
-                      onChange={(event) =>
-                        setExamForm((current) => ({ ...current, block_clipboard: event.target.checked }))
-                      }
-                    />
-                    Block copy, paste, and cut
-                  </label>
-                  <label>
-                    <input
-                      type="checkbox"
-                      checked={examForm.block_context_menu}
-                      onChange={(event) =>
-                        setExamForm((current) => ({ ...current, block_context_menu: event.target.checked }))
-                      }
-                    />
-                    Block right-click menu
-                  </label>
-                  <label>
-                    <input
-                      type="checkbox"
-                      checked={examForm.block_inspect_shortcuts}
-                      onChange={(event) =>
-                        setExamForm((current) => ({
-                          ...current,
-                          block_inspect_shortcuts: event.target.checked,
-                        }))
-                      }
-                    />
-                    Block inspect/developer shortcuts
-                  </label>
-                  <label>
-                    <input
-                      type="checkbox"
-                      checked={examForm.track_focus_loss}
-                      onChange={(event) =>
-                        setExamForm((current) => ({ ...current, track_focus_loss: event.target.checked }))
-                      }
-                    />
-                    Log tab switches and window focus loss
-                  </label>
-                  <label>
-                    <input
-                      type="checkbox"
-                      checked={examForm.enforce_fullscreen}
-                      onChange={(event) =>
-                        setExamForm((current) => ({ ...current, enforce_fullscreen: event.target.checked }))
-                      }
-                    />
-                    Require fullscreen during exam
-                  </label>
-                </div>
-                {examForm.questions.map((question, index) => (
-                  <div className="question-card" key={`q-${index + 1}`}>
-                    <input
-                      placeholder={`Question ${index + 1}`}
-                      value={question.question_text}
-                      onChange={(event) => updateExamQuestion(index, 'question_text', event.target.value)}
-                    />
-                    <div className="inline-fields">
-                      <input
-                        placeholder="Option A"
-                        value={question.option_a}
-                        onChange={(event) => updateExamQuestion(index, 'option_a', event.target.value)}
-                      />
-                      <input
-                        placeholder="Option B"
-                        value={question.option_b}
-                        onChange={(event) => updateExamQuestion(index, 'option_b', event.target.value)}
-                      />
-                    </div>
-                    <div className="inline-fields">
-                      <input
-                        placeholder="Option C"
-                        value={question.option_c}
-                        onChange={(event) => updateExamQuestion(index, 'option_c', event.target.value)}
-                      />
-                      <input
-                        placeholder="Option D"
-                        value={question.option_d}
-                        onChange={(event) => updateExamQuestion(index, 'option_d', event.target.value)}
-                      />
-                    </div>
-                    <div className="inline-fields">
-                      <select
-                        value={question.correct_option}
-                        onChange={(event) => updateExamQuestion(index, 'correct_option', event.target.value)}
-                      >
-                        <option value="A">Correct A</option>
-                        <option value="B">Correct B</option>
-                        <option value="C">Correct C</option>
-                        <option value="D">Correct D</option>
-                      </select>
-                      <input
-                        type="number"
-                        min="1"
-                        max="10"
-                        value={question.marks}
-                        onChange={(event) => updateExamQuestion(index, 'marks', event.target.value)}
-                      />
-                    </div>
-                  </div>
-                ))}
-                <div className="inline-fields">
-                  <button
-                    className="action-btn green"
-                    type="button"
-                    onClick={() =>
-                      setExamForm((current) => ({
-                        ...current,
-                        questions: [...current.questions, { ...defaultQuestion }],
-                      }))
-                    }
-                  >
-                    Add Question
-                  </button>
-                  <button className="action-btn blue" type="submit">
-                    Save Exam
-                  </button>
-                </div>
-              </form>
-            </article>
-
-            <article className="white-panel">
-              <h2>Bulk Add Exams</h2>
-              <p className="helper-text">Paste JSON payload with an `exams` array.</p>
-              <textarea
-                rows="20"
-                value={bulkExamsText}
-                onChange={(event) => setBulkExamsText(event.target.value)}
-              />
-              <button className="action-btn cyan" type="button" onClick={createExamsBulk}>
-                Upload Bulk Exams
-              </button>
-            </article>
-          </section>
-        )}
-
-        {activeTab === 'assignments' && (
-          <section className="two-grid">
-            <article className="white-panel">
-              <h2>Assign Exam</h2>
-              <form className="form-stack" onSubmit={assignExam}>
-                <select
-                  value={assignmentForm.exam_id}
-                  onChange={(event) =>
-                    setAssignmentForm((current) => ({ ...current, exam_id: event.target.value }))
-                  }
-                >
-                  <option value="">Select exam</option>
-                  {exams.map((exam) => (
-                    <option key={exam.id} value={exam.id}>
-                      {exam.title}
-                    </option>
-                  ))}
-                </select>
-                <select
-                  value={assignmentForm.student_id}
-                  onChange={(event) =>
-                    setAssignmentForm((current) => ({ ...current, student_id: event.target.value }))
-                  }
-                >
-                  <option value="">Select student</option>
-                  {students.map((student) => (
-                    <option key={student.id} value={student.id}>
-                      {student.full_name} ({student.username})
-                    </option>
-                  ))}
-                </select>
-                <button className="action-btn yellow" type="submit">
-                  Assign Exam
-                </button>
-              </form>
-            </article>
-            <article className="white-panel">
-              <h2>Current Assignments</h2>
-              <div className="list-stack">
-                {assignments.map((assignment) => (
-                  <div className="row-card" key={assignment.id}>
-                    <strong>{assignment.exam_title}</strong>
-                    <p>
-                      {assignment.student_name} | {assignment.attempt_status || 'pending'} | Score{' '}
-                      {assignment.latest_score ?? '--'}
-                    </p>
-                  </div>
-                ))}
-              </div>
-            </article>
-          </section>
-        )}
-
-        {activeTab === 'reports' && (
-          <section className="two-grid">
-            <article className="white-panel">
-              <h2>Assignment & Score Report</h2>
-              <div className="list-stack">
-                {assignments.map((assignment) => (
-                  <div className="row-card" key={`report-${assignment.id}`}>
-                    <strong>{assignment.exam_title}</strong>
-                    <p>
-                      {assignment.student_name} | {assignment.attempt_status || 'pending'} | Score{' '}
-                      {assignment.latest_score ?? '--'}
-                    </p>
-                  </div>
-                ))}
-              </div>
-            </article>
-            <article className="white-panel wide-panel">
-              <h2>Security Incident Report</h2>
-              <div className="list-stack">
-                {securityIncidents.length ? (
-                  securityIncidents.map((incident) => (
-                    <div className="row-card" key={incident.id}>
-                      <strong>{incident.incident_type.replaceAll('_', ' ')}</strong>
-                      <p>
-                        {incident.student_name || 'Student'} | {incident.exam_title || 'Exam'} |{' '}
-                        {new Date(incident.occurred_at).toLocaleString()}
-                      </p>
-                      <p>{incident.detail}</p>
-                    </div>
-                  ))
-                ) : (
-                  <p className="helper-text">No security incidents logged yet.</p>
-                )}
-              </div>
-            </article>
-          </section>
-        )}
-      </main>
-    )
+  if (session.user.role === 'admin') {
+    return <AdminDashboard api={api} message={message} setMessage={setMessage} onLogout={logout} />
   }
 
-  function renderStudentView() {
-    const {
-      pendingStudentAssignments,
-      nextAssignment,
-      completedScore,
-      completionRate,
-    } = getStudentDashboardModel(studentStats, studentAssignments, history)
-
-    return (
-      <main className="portal-page">
-        {renderTopbar(['dashboard', 'exam', 'reports'])}
-        <section className="welcome-banner">
-          <div>
-            <h1>Welcome, {session.user.full_name}!</h1>
-            <p>Track assigned exams, take live assessments, and review your scores.</p>
-          </div>
-          <div className="banner-actions">
-            <span className="role-chip">Student Portal</span>
-            <button className="ghost-btn" type="button" onClick={loadStudentData}>
-              Refresh
-            </button>
-          </div>
-        </section>
-
-        <section className="metric-grid">
-          <MetricCard color="blue" count={studentStats?.assigned_exams || 0} label="Assigned Exams" icon="AE" helper="Total scheduled" />
-          <MetricCard color="green" count={studentStats?.completed_exams || 0} label="Completed" icon="CO" helper={`${completionRate}% complete`} />
-          <MetricCard color="cyan" count={studentStats?.pending_exams || 0} label="Pending" icon="PE" helper="Ready to start" />
-          <MetricCard color="orange" count={`${studentStats?.average_score || 0}%`} label="Average Score" icon="AS" helper="Submitted attempts" />
-        </section>
-
-        {message ? <div className="notice-bar">{message}</div> : null}
-
-        {activeTab === 'dashboard' && (
-          <section className="dashboard-grid student-dashboard-grid">
-            <article className="white-panel dashboard-panel focus-panel">
-              <PanelHeader eyebrow="Next Up" title={nextAssignment?.exam_title || 'No pending exams'} action={nextAssignment ? `${nextAssignment.duration_minutes} min` : 'Clear'} />
-              <p className="helper-text">
-                {nextAssignment
-                  ? `Assigned ${new Date(nextAssignment.assigned_at).toLocaleDateString()} with ${nextAssignment.status || 'not started'} status.`
-                  : 'You are all caught up. New exams will appear here when assigned.'}
-              </p>
-              <button
-                className="action-btn blue"
-                type="button"
-                disabled={!nextAssignment}
-                onClick={() => setActiveTab('exam')}
-              >
-                Open Exams
-              </button>
-            </article>
-            <article className="white-panel dashboard-panel">
-              <PanelHeader eyebrow="Progress" title="Study Status" action={`${completionRate}%`} />
-              <div className="progress-block">
-                <div className="progress-copy">
-                  <strong>{studentStats?.completed_exams || 0} completed</strong>
-                  <span>{pendingStudentAssignments.length} still pending</span>
-                </div>
-                <ProgressBar value={completionRate} tone="info" />
-              </div>
-              <div className="status-list status-list-modern">
-                <div>
-                  <span>Average score</span>
-                  <strong>{studentStats?.average_score || 0}%</strong>
-                </div>
-                <div>
-                  <span>Latest result</span>
-                  <strong>{completedScore ? `${completedScore.percentage}%` : '--'}</strong>
-                </div>
-              </div>
-            </article>
-            <article className="white-panel dashboard-panel">
-              <PanelHeader eyebrow="Account" title="Profile" action="Student" />
-              <div className="profile-card">
-                <span className="avatar-mark">{session.user.full_name?.slice(0, 1) || 'S'}</span>
-                <div>
-                  <strong>{session.user.full_name}</strong>
-                  <p className="helper-text">@{session.user.username}</p>
-                </div>
-              </div>
-              <button className="mini-btn" type="button" onClick={() => setActiveTab('reports')}>
-                View Results
-              </button>
-            </article>
-          </section>
-        )}
-
-        {activeTab === 'exam' && (
-          liveExam ? (
-            <section className="white-panel">
-              <div className="exam-header">
-                <div>
-                  <h2>{liveExam.title}</h2>
-                  <p className="helper-text">
-                    {liveExam.description} | Answered {answeredCount}/{liveExam.question_count}
-                  </p>
-                </div>
-                <div className="exam-status-block">
-                  <div className={`timer-pill ${secondsLeft < 60 ? 'urgent' : ''}`}>{formatTimer(secondsLeft)}</div>
-                  <span className="autosave-text">{autosaveState || 'Autosave ready'}</span>
-                </div>
-              </div>
-              <div className="security-policy-strip">
-                <span>{liveExam.block_clipboard ? 'Clipboard blocked' : 'Clipboard allowed'}</span>
-                <span>{liveExam.block_context_menu ? 'Right-click blocked' : 'Right-click allowed'}</span>
-                <span>{liveExam.track_focus_loss ? 'Focus monitored' : 'Focus not monitored'}</span>
-                <span>{liveExam.enforce_fullscreen ? 'Fullscreen required' : 'Fullscreen optional'}</span>
-              </div>
-              {securityWarning ? <div className="security-warning">{securityWarning}</div> : null}
-              <div className="question-progress-row">
-                {liveExam.questions.map((question, index) => (
-                  <button
-                    key={question.id}
-                    type="button"
-                    className={`question-pill ${index === currentQuestionIndex && !isReviewMode ? 'active-pill' : ''} ${
-                      answers[question.id] ? 'answered-pill' : ''
-                    }`}
-                    disabled={index > furthestAccessibleIndex}
-                    onClick={() => {
-                      if (index <= furthestAccessibleIndex) {
-                        setCurrentQuestionIndex(index)
-                      }
-                    }}
-                  >
-                    {index + 1}
-                  </button>
-                ))}
-              </div>
-              {isReviewMode ? (
-                <div className="list-stack">
-                  {liveExam.questions.map((question, index) => (
-                    <div className="question-card" key={question.id}>
-                      <strong>
-                        {index + 1}. {question.question_text}
-                      </strong>
-                      <p className="helper-text">
-                        Selected answer: {answers[question.id] ? `${answers[question.id]}` : 'Not answered'}
-                      </p>
-                      <button
-                        className="mini-btn"
-                        type="button"
-                        onClick={() => {
-                          setCurrentQuestionIndex(index)
-                          setIsReviewMode(false)
-                        }}
-                      >
-                        Edit answer
-                      </button>
-                    </div>
-                  ))}
-                  <div className="inline-fields">
-                    <button className="action-btn green" type="button" onClick={() => setIsReviewMode(false)}>
-                      Back to Questions
-                    </button>
-                    <button className="action-btn blue" type="button" onClick={submitExam}>
-                      Submit Exam
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                currentQuestion && (
-                  <div className="question-card">
-                    <strong>
-                      Question {currentQuestionIndex + 1} of {liveExam.question_count}
-                    </strong>
-                    <h3 className="question-title">{currentQuestion.question_text}</h3>
-                    {['A', 'B', 'C', 'D'].map((optionKey) => (
-                      <label className="option-choice" key={`${currentQuestion.id}-${optionKey}`}>
-                        <input
-                          type="radio"
-                          name={`question-${currentQuestion.id}`}
-                          checked={answers[currentQuestion.id] === optionKey}
-                          onChange={() => autosaveAnswer(currentQuestion.id, optionKey)}
-                        />
-                        <span>
-                          {optionKey}. {currentQuestion[`option_${optionKey.toLowerCase()}`]}
-                        </span>
-                      </label>
-                    ))}
-                    <div className="inline-fields">
-                      <button
-                        className="action-btn green"
-                        type="button"
-                        disabled={currentQuestionIndex === 0}
-                        onClick={() => setCurrentQuestionIndex((index) => Math.max(index - 1, 0))}
-                      >
-                        Previous
-                      </button>
-                      {currentQuestionIndex < liveExam.question_count - 1 ? (
-                        <button
-                          className="action-btn blue"
-                          type="button"
-                          onClick={() =>
-                            setCurrentQuestionIndex((index) =>
-                              Math.min(index + 1, liveExam.question_count - 1),
-                            )
-                          }
-                        >
-                          Next
-                        </button>
-                      ) : (
-                        <button className="action-btn yellow" type="button" onClick={() => setIsReviewMode(true)}>
-                          Review Answers
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                )
-              )}
-            </section>
-          ) : (
-            <section className="white-panel">
-              <h2>Assigned Exams</h2>
-              <div className="list-stack">
-                {studentAssignments.map((assignment) => (
-                  <div className="row-card row-flex" key={assignment.assignment_id}>
-                    <div>
-                      <strong>{assignment.exam_title}</strong>
-                      <p>
-                        Duration {assignment.duration_minutes} mins | Status{' '}
-                        {assignment.status || 'not started'}
-                      </p>
-                    </div>
-                    <button
-                      className="action-btn blue compact-btn"
-                      type="button"
-                      disabled={assignment.status === 'submitted'}
-                      onClick={() => startExam(assignment.assignment_id)}
-                    >
-                      {assignment.status === 'in_progress' ? 'Resume' : 'Start'}
-                    </button>
-                  </div>
-                ))}
-              </div>
-            </section>
-          )
-        )}
-
-        {activeTab === 'reports' && (
-          <section className="white-panel">
-            <h2>Score History</h2>
-            <div className="list-stack">
-              {history.map((attempt) => (
-                <div className="row-card" key={attempt.attempt_id}>
-                  <strong>{attempt.exam_title}</strong>
-                  <p>
-                    Score {attempt.score}/{attempt.total_marks} | {attempt.percentage}% | {attempt.status}
-                  </p>
-                </div>
-              ))}
-            </div>
-          </section>
-        )}
-      </main>
-    )
-  }
-
-  function renderTopbar(tabs) {
-    return (
-      <header className="portal-navbar">
-        <div className="brand-area">
-          <span className="brand-icon">S</span>
-          <span>Secure Exam Portal</span>
-        </div>
-        <nav className="nav-links">
-          {tabs.map((tab) => (
-            <button
-              key={tab}
-              type="button"
-              className={activeTab === tab ? 'nav-active' : ''}
-              onClick={() => {
-                setActiveTab(tab)
-                if (tab !== 'exam' && liveExam) {
-                  setActiveTab('exam')
-                }
-              }}
-            >
-              {tab === 'dashboard' && 'Dashboard'}
-              {tab === 'exams' && 'Exams'}
-              {tab === 'assignments' && 'Assignments'}
-              {tab === 'users' && 'Users'}
-              {tab === 'reports' && 'Reports'}
-              {tab === 'exam' && 'Exams'}
-            </button>
-          ))}
-          <button type="button" className="logout-btn" onClick={logout}>
-            Logout
-          </button>
-        </nav>
-      </header>
-    )
-  }
-}
-
-function MetricCard({ color, count, label, icon, helper }) {
   return (
-    <article className={`metric-card ${color}`}>
-      <div>
-        <h3>{count}</h3>
-        <p>{label}</p>
-        {helper ? <span>{helper}</span> : null}
-      </div>
-      <span className="metric-icon">{icon}</span>
-    </article>
+    <StudentDashboard
+      api={api}
+      user={session.user}
+      message={message}
+      setMessage={setMessage}
+      onLogout={logout}
+    />
   )
-}
-
-function MiniCard({ title, text, buttonText, onClick }) {
-  return (
-    <article className="white-panel mini-card">
-      <h2>{title}</h2>
-      <p className="helper-text">{text}</p>
-      <button className="mini-btn" type="button" onClick={onClick}>
-        {buttonText}
-      </button>
-    </article>
-  )
-}
-
-function PanelHeader({ eyebrow, title, action }) {
-  return (
-    <div className="panel-header">
-      <div>
-        <span>{eyebrow}</span>
-        <h2>{title}</h2>
-      </div>
-      {action ? <strong>{action}</strong> : null}
-    </div>
-  )
-}
-
-function ProgressBar({ value, tone = 'success' }) {
-  const normalizedValue = Math.min(Math.max(Number(value) || 0, 0), 100)
-  return (
-    <div className={`progress-track ${tone}`}>
-      <span style={{ width: `${normalizedValue}%` }} />
-    </div>
-  )
-}
-
-function StatusBadge({ status }) {
-  const label = status.replaceAll('_', ' ')
-  const tone = status === 'submitted' ? 'success' : status === 'in_progress' ? 'info' : 'neutral'
-  return <span className={`status-badge ${tone}`}>{label}</span>
 }
 
 export default App

@@ -1,13 +1,13 @@
 import logging
 import time
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
 from app.extensions.db import SessionLocal, init_db
-from app.extensions.mail import send_assignment_email
+from app.extensions.mail import send_assignment_email, send_password_reset_email
 from app.models.exam import AttemptAnswer, ExamAssignment, ExamAttempt
 from app.models.job import BackgroundJob, JobStatus
 
@@ -15,6 +15,7 @@ logger = logging.getLogger(__name__)
 
 ASSIGNMENT_EMAIL_JOB = "assignment_email"
 ATTEMPT_REPORT_JOB = "attempt_report"
+PASSWORD_RESET_EMAIL_JOB = "password_reset_email"
 
 
 def enqueue_job(
@@ -53,8 +54,21 @@ def enqueue_attempt_report(db: Session, *, attempt_id: int) -> BackgroundJob:
     return enqueue_job(db, ATTEMPT_REPORT_JOB, {"attempt_id": attempt_id})
 
 
+def enqueue_password_reset_email(
+    db: Session,
+    *,
+    recipient_email: str,
+    reset_token: str,
+) -> BackgroundJob:
+    return enqueue_job(
+        db,
+        PASSWORD_RESET_EMAIL_JOB,
+        {"recipient_email": recipient_email, "reset_token": reset_token},
+    )
+
+
 def claim_next_job(db: Session) -> BackgroundJob | None:
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     job = db.scalar(
         select(BackgroundJob)
         .where(
@@ -89,7 +103,7 @@ def process_job(db: Session, job: BackgroundJob) -> None:
 
     job.result = result or {}
     job.status = JobStatus.completed
-    job.completed_at = datetime.now(timezone.utc)
+    job.completed_at = datetime.now(UTC)
     db.commit()
     logger.info("Completed background job %s type=%s", job.id, job.job_type)
 
@@ -123,6 +137,13 @@ def _dispatch_job(db: Session, job: BackgroundJob) -> dict[str, Any]:
 
     if job.job_type == ATTEMPT_REPORT_JOB:
         return _generate_attempt_report(db, int(job.payload["attempt_id"]))
+
+    if job.job_type == PASSWORD_RESET_EMAIL_JOB:
+        send_password_reset_email(
+            job.payload["recipient_email"],
+            job.payload["reset_token"],
+        )
+        return {"sent": True}
 
     raise ValueError(f"Unsupported background job type: {job.job_type}")
 
