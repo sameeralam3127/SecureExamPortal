@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import desc, func, select
@@ -10,7 +10,6 @@ from app.models.user import User
 from app.modules.auth.dependencies import require_student
 from app.schemas.exam import (
     AnswerState,
-    AnswerSubmit,
     AssignmentStatusRead,
     AttemptResult,
     AttemptSubmitRequest,
@@ -290,10 +289,10 @@ def submit_attempt(
     if attempt.status == AttemptStatus.submitted:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Attempt already submitted")
 
-    allowed_finish_time = attempt.started_at.astimezone(timezone.utc).timestamp() + (
+    allowed_finish_time = attempt.started_at.astimezone(UTC).timestamp() + (
         attempt.assignment.exam.duration_minutes * 60
     )
-    now_ts = datetime.now(timezone.utc).timestamp()
+    now_ts = datetime.now(UTC).timestamp()
 
     question_map = {question.id: question for question in attempt.assignment.exam.questions}
     if payload.answers:
@@ -316,8 +315,6 @@ def submit_attempt(
         db.flush()
         db.refresh(attempt)
 
-    answer_map = {answer.question_id: answer.selected_option for answer in attempt.answers}
-
     score = 0
     for answer in attempt.answers:
         question = question_map.get(answer.question_id)
@@ -337,7 +334,7 @@ def submit_attempt(
     attempt.score = score
     attempt.total_marks = sum(question.marks for question in question_map.values())
     attempt.percentage = round((score / attempt.total_marks) * 100, 2) if attempt.total_marks else 0
-    attempt.submitted_at = datetime.now(timezone.utc)
+    attempt.submitted_at = datetime.now(UTC)
     db.flush()
     enqueue_attempt_report(db, attempt_id=attempt.id)
     db.commit()

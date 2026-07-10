@@ -2,7 +2,8 @@ from datetime import datetime
 from enum import Enum
 from typing import Any
 
-from sqlalchemy import DateTime, Enum as SqlEnum, Integer, JSON, String, Text, func
+from sqlalchemy import JSON, DateTime, Integer, String, Text, func
+from sqlalchemy import Enum as SqlEnum
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.extensions.db import Base

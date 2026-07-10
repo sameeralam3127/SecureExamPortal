@@ -57,6 +57,9 @@ function App({ route = '/login', onNavigate = () => {} }) {
     password: '',
   })
   const [message, setMessage] = useState('')
+  const [showForgot, setShowForgot] = useState(false)
+  const [forgotEmail, setForgotEmail] = useState('')
+  const [resetPassword, setResetPassword] = useState('')
   const [activeTab, setActiveTab] = useState('dashboard')
 
   const [adminStats, setAdminStats] = useState(null)
@@ -313,13 +316,50 @@ function App({ route = '/login', onNavigate = () => {} }) {
     }
   }
 
-  const logout = () => {
+  const logout = async () => {
+    // Revoke the session server-side (best effort) before clearing local state.
+    try {
+      await apiRequest('/api/v1/auth/logout', { method: 'POST' })
+    } catch {
+      // Ignore network/auth errors; local sign-out must always proceed.
+    }
     setSession(null)
     setLiveExam(null)
     setAnswers({})
     setActiveTab('dashboard')
     localStorage.removeItem('secureExamSession')
     onNavigate('/login')
+  }
+
+  const handleForgotPassword = async (event) => {
+    event.preventDefault()
+    try {
+      const data = await apiRequest('/api/v1/auth/password-reset/request', {
+        method: 'POST',
+        body: JSON.stringify({ email: forgotEmail }),
+      })
+      setMessage(data.detail || 'If that account exists, a reset link has been sent.')
+      setForgotEmail('')
+      setShowForgot(false)
+    } catch (error) {
+      setMessage(error.message)
+    }
+  }
+
+  const handleResetPassword = async (event) => {
+    event.preventDefault()
+    const token = new URLSearchParams(window.location.search).get('token') || ''
+    try {
+      const data = await apiRequest('/api/v1/auth/password-reset/confirm', {
+        method: 'POST',
+        body: JSON.stringify({ token, new_password: resetPassword }),
+      })
+      setMessage(data.detail || 'Password updated. Please sign in.')
+      setResetPassword('')
+      onNavigate('/login')
+    } catch (error) {
+      setMessage(error.message)
+    }
   }
 
   const handleRegister = async (event) => {
@@ -543,6 +583,45 @@ function App({ route = '/login', onNavigate = () => {} }) {
       )
     : 0
 
+  if (route === '/reset-password') {
+    return (
+      <main className="login-shell">
+        <section className="login-card">
+          <div className="brand-mark">
+            <span className="brand-icon">S</span>
+            <span>Secure Exam Portal</span>
+          </div>
+          <h1>Choose a new password</h1>
+          <p>Enter a new password for your account.</p>
+          <form className="form-stack" onSubmit={handleResetPassword}>
+            <label htmlFor="reset-password">New password</label>
+            <input
+              id="reset-password"
+              type="password"
+              value={resetPassword}
+              onChange={(event) => setResetPassword(event.target.value)}
+              placeholder="New password (min 8 chars, letters and numbers)"
+              autoComplete="new-password"
+              required
+              minLength={8}
+            />
+            {message ? (
+              <p className="alert-message" role="status" aria-live="polite">
+                {message}
+              </p>
+            ) : null}
+            <button className="action-btn blue" type="submit">
+              Update password
+            </button>
+          </form>
+          <button className="ghost-btn" type="button" onClick={() => onNavigate('/login')}>
+            Back to login
+          </button>
+        </section>
+      </main>
+    )
+  }
+
   if (!session) {
     return (
       <main className="login-shell">
@@ -594,6 +673,9 @@ function App({ route = '/login', onNavigate = () => {} }) {
                     }))
                   }
                   placeholder="Full name"
+                  aria-label="Full name"
+                  autoComplete="name"
+                  required
                 />
                 <input
                   value={registerForm.username}
@@ -604,6 +686,9 @@ function App({ route = '/login', onNavigate = () => {} }) {
                     }))
                   }
                   placeholder="Username"
+                  aria-label="Username"
+                  autoComplete="username"
+                  required
                 />
                 <input
                   type="email"
@@ -612,6 +697,9 @@ function App({ route = '/login', onNavigate = () => {} }) {
                     setRegisterForm((current) => ({ ...current, email: event.target.value }))
                   }
                   placeholder="Email"
+                  aria-label="Email address"
+                  autoComplete="email"
+                  required
                 />
                 <input
                   type="password"
@@ -622,9 +710,17 @@ function App({ route = '/login', onNavigate = () => {} }) {
                       password: event.target.value,
                     }))
                   }
-                  placeholder="Password"
+                  placeholder="Password (min 8 chars, letters and numbers)"
+                  aria-label="Password"
+                  autoComplete="new-password"
+                  required
+                  minLength={8}
                 />
-                {message ? <p className="alert-message">{message}</p> : null}
+                {message ? (
+                  <p className="alert-message" role="status" aria-live="polite">
+                    {message}
+                  </p>
+                ) : null}
                 <button className="action-btn blue" type="submit">
                   Create Account
                 </button>
@@ -641,6 +737,9 @@ function App({ route = '/login', onNavigate = () => {} }) {
                     setLoginForm((current) => ({ ...current, username: event.target.value }))
                   }
                   placeholder="Username"
+                  aria-label="Username"
+                  autoComplete="username"
+                  required
                 />
                 <input
                   type="password"
@@ -649,12 +748,44 @@ function App({ route = '/login', onNavigate = () => {} }) {
                     setLoginForm((current) => ({ ...current, password: event.target.value }))
                   }
                   placeholder="Password"
+                  aria-label="Password"
+                  autoComplete="current-password"
+                  required
                 />
-                {message ? <p className="alert-message">{message}</p> : null}
+                {message ? (
+                  <p className="alert-message" role="status" aria-live="polite">
+                    {message}
+                  </p>
+                ) : null}
                 <button className="action-btn blue" type="submit">
                   Login
                 </button>
               </form>
+              <button
+                className="ghost-btn"
+                type="button"
+                onClick={() => setShowForgot((current) => !current)}
+                aria-expanded={showForgot}
+              >
+                Forgot password?
+              </button>
+              {showForgot ? (
+                <form className="form-stack" onSubmit={handleForgotPassword}>
+                  <label htmlFor="forgot-email">Account email</label>
+                  <input
+                    id="forgot-email"
+                    type="email"
+                    value={forgotEmail}
+                    onChange={(event) => setForgotEmail(event.target.value)}
+                    placeholder="you@example.com"
+                    autoComplete="email"
+                    required
+                  />
+                  <button className="action-btn green" type="submit">
+                    Send reset link
+                  </button>
+                </form>
+              ) : null}
               <div className="google-login-wrap">
                 {GOOGLE_CLIENT_ID ? (
                   <div id="googleSignInButton" />
