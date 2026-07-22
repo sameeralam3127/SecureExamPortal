@@ -1,3 +1,5 @@
+import Icon from './icons.jsx'
+
 export function MetricCard({ color, count, label, icon, helper }) {
   return (
     <article className={`metric-card ${color}`}>
@@ -7,6 +9,22 @@ export function MetricCard({ color, count, label, icon, helper }) {
         {helper ? <span>{helper}</span> : null}
       </div>
       <span className="metric-icon">{icon}</span>
+    </article>
+  )
+}
+
+// Clean SaaS-style stat tile used across the admin dashboard.
+export function StatTile({ tone = 'blue', icon, value, label, helper }) {
+  return (
+    <article className={`stat-tile tone-${tone}`}>
+      <div className="stat-tile-head">
+        <span className="stat-chip">
+          <Icon name={icon} size={18} />
+        </span>
+        {helper ? <span className="stat-helper">{helper}</span> : null}
+      </div>
+      <strong className="stat-value">{value}</strong>
+      <span className="stat-label">{label}</span>
     </article>
   )
 }
