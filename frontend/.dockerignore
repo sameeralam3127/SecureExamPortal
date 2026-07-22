@@ -1,0 +1,12 @@
+# Never copy host build artifacts into the image — the image installs its own
+# platform-correct dependencies via `npm ci`. Copying a host node_modules (e.g.
+# macOS-built esbuild/rollup binaries) over them breaks `npm run build`.
+node_modules
+dist
+.vite
+npm-debug.log*
+.DS_Store
+.git
+.gitignore
+Dockerfile
+.dockerignore

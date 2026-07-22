@@ -1,0 +1,19 @@
+# Keep host-only artifacts out of the backend image build context.
+__pycache__
+**/__pycache__
+*.py[cod]
+venv
+.venv
+.testvenv
+*.sqlite
+*.sqlite3
+.alembic_*.sqlite
+.pytest_cache
+.ruff_cache
+.coverage
+.git
+.gitignore
+**/.DS_Store
+.env
+.env.*
+!.env.example
