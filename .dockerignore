@@ -1,0 +1,31 @@
+# Build context hygiene for the single-image (repo-root) Docker build.
+# Host build artifacts must never overwrite the image's platform-correct deps.
+
+# Node
+**/node_modules
+frontend/dist
+frontend/.vite
+
+# Python
+**/__pycache__
+**/*.py[cod]
+venv
+.venv
+backend/.testvenv
+backend/**/*.sqlite
+backend/**/*.sqlite3
+*.egg-info
+
+# VCS / editor / OS
+.git
+.gitignore
+.github
+**/.DS_Store
+.vscode
+.idea
+
+# Local env and docs
+.env
+.env.*
+!.env.example
+*.md
