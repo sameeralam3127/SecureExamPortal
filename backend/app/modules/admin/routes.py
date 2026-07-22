@@ -5,10 +5,19 @@ from sqlalchemy import desc, func, select
 from sqlalchemy.orm import Session, selectinload
 
 from app.extensions.db import get_db
+from app.models.audit import AuditEvent
 from app.models.exam import AttemptStatus, Exam, ExamAssignment, ExamAttempt, ExamQuestion, SecurityIncident
 from app.models.job import BackgroundJob, JobStatus
 from app.models.user import User, UserRole
 from app.modules.auth.dependencies import require_admin
+from app.schemas.analytics import (
+    AdminAnalytics,
+    AssignmentBreakdown,
+    AuditEventRead,
+    ExamPerformance,
+    IncidentBreakdown,
+    ResultsMetrics,
+)
 from app.schemas.exam import (
     AssignmentCreate,
     AssignmentRead,
@@ -20,11 +29,14 @@ from app.schemas.exam import (
     SecurityIncidentRead,
 )
 from app.schemas.user import BulkUserCreate, UserCreate, UserRead
+from app.services.audit import record_audit
 from app.services.job_queue import ATTEMPT_REPORT_JOB, enqueue_assignment_email
 from app.utils.security import hash_password
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 logger = logging.getLogger(__name__)
+
+PASS_THRESHOLD = 50
 
 
 @router.get("/dashboard", response_model=DashboardStats)
@@ -73,7 +85,7 @@ def list_students(
 @router.post("/students", response_model=UserRead, status_code=status.HTTP_201_CREATED)
 def create_student(
     payload: UserCreate,
-    _: User = Depends(require_admin),
+    admin: User = Depends(require_admin),
     db: Session = Depends(get_db),
 ) -> User:
     duplicate = db.scalar(
@@ -93,6 +105,15 @@ def create_student(
         role=UserRole.student,
     )
     db.add(student)
+    db.flush()
+    record_audit(
+        db,
+        actor=admin,
+        action="student.create",
+        entity_type="user",
+        entity_id=student.id,
+        detail={"username": student.username},
+    )
     db.commit()
     db.refresh(student)
     return student
@@ -101,7 +122,7 @@ def create_student(
 @router.post("/students/bulk", response_model=list[UserRead], status_code=status.HTTP_201_CREATED)
 def create_students_bulk(
     payload: BulkUserCreate,
-    _: User = Depends(require_admin),
+    admin: User = Depends(require_admin),
     db: Session = Depends(get_db),
 ) -> list[User]:
     usernames = [student.username for student in payload.users]
@@ -134,6 +155,14 @@ def create_students_bulk(
         for student in payload.users
     ]
     db.add_all(students)
+    db.flush()
+    record_audit(
+        db,
+        actor=admin,
+        action="student.bulk_create",
+        entity_type="user",
+        detail={"count": len(students)},
+    )
     db.commit()
     for student in students:
         db.refresh(student)
@@ -143,7 +172,7 @@ def create_students_bulk(
 @router.delete("/students/{student_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_student(
     student_id: int,
-    _: User = Depends(require_admin),
+    admin: User = Depends(require_admin),
     db: Session = Depends(get_db),
 ) -> None:
     student = db.get(User, student_id)
@@ -152,6 +181,14 @@ def delete_student(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Student not found",
         )
+    record_audit(
+        db,
+        actor=admin,
+        action="student.delete",
+        entity_type="user",
+        entity_id=student.id,
+        detail={"username": student.username},
+    )
     db.delete(student)
     db.commit()
 
@@ -189,6 +226,15 @@ def create_exam(
         questions=[ExamQuestion(**question.model_dump()) for question in payload.questions],
     )
     db.add(exam)
+    db.flush()
+    record_audit(
+        db,
+        actor=current_user,
+        action="exam.create",
+        entity_type="exam",
+        entity_id=exam.id,
+        detail={"title": exam.title, "questions": len(payload.questions)},
+    )
     db.commit()
     db.refresh(exam)
     return exam
@@ -216,6 +262,14 @@ def create_exams_bulk(
         for exam in payload.exams
     ]
     db.add_all(exams)
+    db.flush()
+    record_audit(
+        db,
+        actor=current_user,
+        action="exam.bulk_create",
+        entity_type="exam",
+        detail={"count": len(exams)},
+    )
     db.commit()
     for exam in exams:
         db.refresh(exam)
@@ -225,7 +279,7 @@ def create_exams_bulk(
 @router.delete("/exams/{exam_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_exam(
     exam_id: int,
-    _: User = Depends(require_admin),
+    admin: User = Depends(require_admin),
     db: Session = Depends(get_db),
 ) -> None:
     exam = db.get(Exam, exam_id)
@@ -234,6 +288,14 @@ def delete_exam(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Exam not found",
         )
+    record_audit(
+        db,
+        actor=admin,
+        action="exam.delete",
+        entity_type="exam",
+        entity_id=exam.id,
+        detail={"title": exam.title},
+    )
     db.delete(exam)
     db.commit()
 
@@ -241,7 +303,7 @@ def delete_exam(
 @router.post("/assignments", response_model=AssignmentRead, status_code=status.HTTP_201_CREATED)
 def assign_exam(
     payload: AssignmentCreate,
-    _: User = Depends(require_admin),
+    admin: User = Depends(require_admin),
     db: Session = Depends(get_db),
 ) -> AssignmentRead:
     exam = db.get(Exam, payload.exam_id)
@@ -266,6 +328,15 @@ def assign_exam(
 
     assignment = ExamAssignment(exam_id=payload.exam_id, student_id=payload.student_id)
     db.add(assignment)
+    db.flush()
+    record_audit(
+        db,
+        actor=admin,
+        action="assignment.create",
+        entity_type="assignment",
+        entity_id=assignment.id,
+        detail={"exam_id": exam.id, "student_id": student.id},
+    )
     enqueue_assignment_email(
         db,
         recipient_email=student.email,
@@ -321,7 +392,7 @@ def list_assignments(
 @router.delete("/assignments/{assignment_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_assignment(
     assignment_id: int,
-    _: User = Depends(require_admin),
+    admin: User = Depends(require_admin),
     db: Session = Depends(get_db),
 ) -> None:
     assignment = db.get(ExamAssignment, assignment_id)
@@ -330,8 +401,113 @@ def delete_assignment(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Assignment not found",
         )
+    record_audit(
+        db,
+        actor=admin,
+        action="assignment.delete",
+        entity_type="assignment",
+        entity_id=assignment.id,
+        detail={"exam_id": assignment.exam_id, "student_id": assignment.student_id},
+    )
     db.delete(assignment)
     db.commit()
+
+
+@router.get("/analytics", response_model=AdminAnalytics)
+def admin_analytics(
+    _: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+) -> AdminAnalytics:
+    total_students = (
+        db.scalar(select(func.count(User.id)).where(User.role == UserRole.student)) or 0
+    )
+    total_exams = db.scalar(select(func.count(Exam.id))) or 0
+    active_exams = db.scalar(select(func.count(Exam.id)).where(Exam.is_active.is_(True))) or 0
+
+    assignments = db.scalars(
+        select(ExamAssignment).options(
+            selectinload(ExamAssignment.exam),
+            selectinload(ExamAssignment.attempts),
+        )
+    ).all()
+
+    breakdown = AssignmentBreakdown(total=len(assignments))
+    scores: list[float] = []
+    per_exam: dict[int, dict] = {}
+    for assignment in assignments:
+        latest = assignment.attempts[-1] if assignment.attempts else None
+        status_value = latest.status if latest else None
+        if status_value == AttemptStatus.submitted:
+            breakdown.submitted += 1
+        elif status_value == AttemptStatus.in_progress:
+            breakdown.in_progress += 1
+        else:
+            breakdown.pending += 1
+
+        bucket = per_exam.setdefault(
+            assignment.exam_id,
+            {"title": assignment.exam.title, "assignments": 0, "submissions": 0, "score_sum": 0.0},
+        )
+        bucket["assignments"] += 1
+        if status_value == AttemptStatus.submitted and latest is not None:
+            score = float(latest.percentage)
+            scores.append(score)
+            bucket["submissions"] += 1
+            bucket["score_sum"] += score
+
+    results = ResultsMetrics(submitted_attempts=len(scores))
+    if scores:
+        results.average_score = round(sum(scores) / len(scores), 2)
+        results.highest_score = round(max(scores), 2)
+        results.lowest_score = round(min(scores), 2)
+        passed = len([score for score in scores if score >= PASS_THRESHOLD])
+        results.pass_rate = round((passed / len(scores)) * 100, 2)
+
+    exam_performance = [
+        ExamPerformance(
+            exam_id=exam_id,
+            title=data["title"],
+            assignments=data["assignments"],
+            submissions=data["submissions"],
+            average_score=round(data["score_sum"] / data["submissions"], 2)
+            if data["submissions"]
+            else 0,
+        )
+        for exam_id, data in per_exam.items()
+    ]
+    exam_performance.sort(key=lambda item: (item.submissions, item.assignments), reverse=True)
+
+    incident_total = db.scalar(select(func.count(SecurityIncident.id))) or 0
+    incident_rows = db.execute(
+        select(SecurityIncident.incident_type, func.count(SecurityIncident.id)).group_by(
+            SecurityIncident.incident_type
+        )
+    ).all()
+    incidents = IncidentBreakdown(
+        total=incident_total,
+        by_type={incident_type: count for incident_type, count in incident_rows},
+    )
+
+    return AdminAnalytics(
+        pass_threshold=PASS_THRESHOLD,
+        total_students=total_students,
+        total_exams=total_exams,
+        active_exams=active_exams,
+        assignments=breakdown,
+        results=results,
+        incidents=incidents,
+        exam_performance=exam_performance[:10],
+    )
+
+
+@router.get("/audit-events", response_model=list[AuditEventRead])
+def list_audit_events(
+    _: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+) -> list[AuditEvent]:
+    return list(
+        db.scalars(select(AuditEvent).order_by(desc(AuditEvent.id)).limit(100)).all()
+    )
 
 
 @router.get("/jobs", response_model=list[BackgroundJobRead])
