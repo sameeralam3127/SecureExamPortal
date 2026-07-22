@@ -6,7 +6,7 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
-from app.extensions.db import SessionLocal, init_db
+from app.extensions.db import SessionLocal
 from app.extensions.mail import send_assignment_email, send_password_reset_email
 from app.models.exam import AttemptAnswer, ExamAssignment, ExamAttempt
 from app.models.job import BackgroundJob, JobStatus
@@ -118,10 +118,16 @@ def process_one_job() -> bool:
 
 
 def run_worker(*, poll_interval: float = 2.0) -> None:
-    init_db()
+    # Schema is owned by migrations (the `migrate` service / entrypoint), so the
+    # worker no longer creates tables. It tolerates transient DB errors while the
+    # migration/seed steps finish coming up.
     logger.info("Background worker started")
     while True:
-        did_work = process_one_job()
+        try:
+            did_work = process_one_job()
+        except Exception:
+            logger.exception("Worker iteration failed; backing off before retry")
+            did_work = False
         if not did_work:
             time.sleep(poll_interval)
 

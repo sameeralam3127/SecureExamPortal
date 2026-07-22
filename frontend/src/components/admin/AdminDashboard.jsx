@@ -4,6 +4,7 @@ import { getAdminDashboardModel } from '../../dashboardModel.js'
 import { useAdminPortal } from '../../hooks/useAdminPortal.js'
 import Topbar from '../Topbar.jsx'
 import { MetricCard, Notice } from '../ui.jsx'
+import AdminAnalytics from './AdminAnalytics.jsx'
 import AdminOverview from './AdminOverview.jsx'
 import AdminReports from './AdminReports.jsx'
 import AssignExam from './AssignExam.jsx'
@@ -15,6 +16,7 @@ const TABS = [
   { key: 'exams', label: 'Exams' },
   { key: 'assignments', label: 'Assignments' },
   { key: 'users', label: 'Users' },
+  { key: 'analytics', label: 'Analytics' },
   { key: 'reports', label: 'Reports' },
 ]
 
@@ -115,6 +117,10 @@ export default function AdminDashboard({ api, message, setMessage, onLogout }) {
           assignments={admin.assignments}
           onDeleteAssignment={admin.deleteAssignment}
         />
+      )}
+
+      {activeTab === 'analytics' && (
+        <AdminAnalytics analytics={admin.analytics} auditEvents={admin.auditEvents} />
       )}
 
       {activeTab === 'reports' && (

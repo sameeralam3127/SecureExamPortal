@@ -106,3 +106,61 @@ def test_delete_endpoints_require_admin(client):
 
     assert client.delete("/api/v1/admin/students/1", headers=headers).status_code == 403
     assert client.delete("/api/v1/admin/exams/1", headers=headers).status_code == 403
+
+
+def test_admin_analytics_and_audit_trail(client):
+    headers = _admin_headers(client)
+    suffix = uuid.uuid4().hex[:8]
+
+    student_id = client.post(
+        "/api/v1/admin/students",
+        headers=headers,
+        json={
+            "full_name": "Analytics Student",
+            "username": f"astu_{suffix}",
+            "email": f"astu_{suffix}@example.com",
+            "password": "StudentPass1",
+        },
+    ).json()["id"]
+    exam_id = client.post(
+        "/api/v1/admin/exams", headers=headers, json=_exam_payload(f"Analytics Exam {suffix}")
+    ).json()["id"]
+    assign = client.post(
+        "/api/v1/admin/assignments",
+        headers=headers,
+        json={"exam_id": exam_id, "student_id": student_id},
+    )
+    assert assign.status_code == 201, assign.text
+
+    analytics = client.get("/api/v1/admin/analytics", headers=headers)
+    assert analytics.status_code == 200, analytics.text
+    data = analytics.json()
+    assert data["total_students"] >= 1
+    assert data["total_exams"] >= 1
+    assert data["assignments"]["total"] >= 1
+    # A freshly assigned exam with no attempt counts as pending.
+    assert data["assignments"]["pending"] >= 1
+    assert "by_type" in data["incidents"]
+    assert any(exam["exam_id"] == exam_id for exam in data["exam_performance"])
+
+    audit = client.get("/api/v1/admin/audit-events", headers=headers)
+    assert audit.status_code == 200
+    actions = {event["action"] for event in audit.json()}
+    assert {"student.create", "exam.create", "assignment.create"} <= actions
+
+
+def test_analytics_and_audit_require_admin(client):
+    suffix = uuid.uuid4().hex[:8]
+    student_token = client.post(
+        "/api/v1/auth/register",
+        json={
+            "full_name": "Nosy Student",
+            "username": f"nosy_{suffix}",
+            "email": f"nosy_{suffix}@example.com",
+            "password": "StudentPass1",
+        },
+    ).json()["access_token"]
+    headers = {"Authorization": f"Bearer {student_token}"}
+
+    assert client.get("/api/v1/admin/analytics", headers=headers).status_code == 403
+    assert client.get("/api/v1/admin/audit-events", headers=headers).status_code == 403
