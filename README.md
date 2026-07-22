@@ -17,10 +17,12 @@ proxy, and a Vite React frontend.
   Google Identity Services sign-in.
 - Enforced password strength, self-service password reset, and sign-out that
   revokes existing sessions everywhere.
-- Role-based admin and student dashboards.
-- Admin student management, including single-student creation and CSV-style
-  bulk upload.
-- Admin exam authoring, including bulk JSON exam upload and MCQ question banks.
+- Role-based admin and student dashboards, with a professional admin console
+  (collapsible sidebar navigation, sticky topbar, and stat tiles).
+- Admin student management, including a searchable student table with delete,
+  single-student creation, and CSV-style bulk upload.
+- Admin exam authoring with live validation, per-question editing, bulk JSON
+  exam upload, and MCQ question banks.
 - Exam assignment workflow with optional SMTP email notifications.
 - Database-backed worker queue for assignment emails and submitted-attempt
   reports.
@@ -56,6 +58,19 @@ Worker
   |-- SMTP provider, when configured
 ```
 
+The React frontend is organised into small, focused modules rather than a single
+file:
+
+```text
+frontend/src/
+  lib/         API client and shared constants
+  hooks/       useAdminPortal, useStudentPortal, useExamGuard
+  components/
+    admin/     AdminShell + Overview, Analytics, ManageUsers, ExamBuilder, ...
+    student/   StudentDashboard, ExamRunner
+    ui.jsx     shared presentational primitives (StatTile, MetricCard, ...)
+```
+
 ## Tech Stack
 
 | Layer           | Technology                                                     |
@@ -63,7 +78,7 @@ Worker
 | Backend API     | FastAPI, SQLAlchemy, Pydantic, Uvicorn, Gunicorn               |
 | Database        | PostgreSQL 16                                                  |
 | Background jobs | Database-backed queue worker                                   |
-| Frontend        | React, Vite                                                    |
+| Frontend        | React 19, Vite (modular components + hooks)                     |
 | Edge            | Nginx reverse proxy                                            |
 | Auth            | Password login, role checks, optional Google Identity Services |
 | Deployment      | Docker, Docker Compose, optional Certbot/Let's Encrypt         |
