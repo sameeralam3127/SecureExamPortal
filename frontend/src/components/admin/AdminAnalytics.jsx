@@ -1,4 +1,4 @@
-import { MetricCard, PanelHeader, ProgressBar } from '../ui.jsx'
+import { PanelHeader, ProgressBar, StatTile } from '../ui.jsx'
 
 function formatAction(action) {
   return action.replaceAll('.', ' · ').replaceAll('_', ' ')
@@ -18,11 +18,11 @@ export default function AdminAnalytics({ analytics, auditEvents }) {
 
   return (
     <section className="admin-stack">
-      <section className="metric-grid">
-        <MetricCard color="blue" count={analytics.total_exams} label="Exams" icon="EX" helper={`${analytics.active_exams} active`} />
-        <MetricCard color="green" count={assignments.total} label="Assignments" icon="AS" helper={`${assignments.submitted} submitted`} />
-        <MetricCard color="cyan" count={`${results.average_score}%`} label="Average Score" icon="AV" helper={`${results.submitted_attempts} attempts`} />
-        <MetricCard color="orange" count={incidents.total} label="Security Incidents" icon="SI" helper={`${incidentTypes.length} types`} />
+      <section className="stat-row">
+        <StatTile tone="violet" icon="exams" value={analytics.total_exams} label="Exams" helper={`${analytics.active_exams} active`} />
+        <StatTile tone="blue" icon="assignments" value={assignments.total} label="Assignments" helper={`${assignments.submitted} submitted`} />
+        <StatTile tone="teal" icon="analytics" value={`${results.average_score}%`} label="Average Score" helper={`${results.submitted_attempts} attempts`} />
+        <StatTile tone="rose" icon="shield" value={incidents.total} label="Security Incidents" helper={`${incidentTypes.length} types`} />
       </section>
 
       <section className="two-grid">

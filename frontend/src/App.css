@@ -1154,3 +1154,401 @@ button:focus-visible {
   opacity: 0.45;
   cursor: not-allowed;
 }
+
+/* ============================================================
+   Pro admin dashboard: dark sidebar + light content shell.
+   All content overrides are scoped under .admin-shell so the
+   student portal styling is untouched.
+   ============================================================ */
+.admin-shell {
+  --sidebar-w: 250px;
+  --sidebar-collapsed: 78px;
+  --acc: #4f46e5;
+  --acc-soft: rgba(99, 102, 241, 0.16);
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: var(--sidebar-w) minmax(0, 1fr);
+  background: #f5f7fb;
+}
+.admin-shell.is-collapsed {
+  grid-template-columns: var(--sidebar-collapsed) minmax(0, 1fr);
+}
+
+/* ---- Sidebar ---- */
+.admin-sidebar {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 18px 14px;
+  background: linear-gradient(185deg, #131a2e 0%, #0d1322 100%);
+  border-right: 1px solid rgba(148, 163, 184, 0.12);
+  overflow-y: auto;
+}
+.admin-brand {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 6px 8px 16px;
+  color: #f8fafc;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+}
+.admin-brand-icon {
+  flex: none;
+  width: 38px;
+  height: 38px;
+  border-radius: 11px;
+  display: grid;
+  place-items: center;
+  color: #fff;
+  background: linear-gradient(135deg, #6366f1, #4338ca);
+  box-shadow: 0 6px 16px rgba(67, 56, 202, 0.45);
+}
+.admin-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+}
+.admin-nav-item,
+.admin-logout {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 10px 12px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: #94a3b8;
+  font-family: inherit;
+  font-weight: 600;
+  font-size: 0.92rem;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+.admin-nav-item:hover {
+  background: rgba(148, 163, 184, 0.1);
+  color: #e2e8f0;
+}
+.admin-nav-item.active {
+  position: relative;
+  background: var(--acc-soft);
+  color: #fff;
+}
+.admin-nav-item.active::before {
+  content: '';
+  position: absolute;
+  left: -14px;
+  top: 8px;
+  bottom: 8px;
+  width: 3px;
+  border-radius: 0 3px 3px 0;
+  background: #818cf8;
+}
+.admin-nav-item svg,
+.admin-logout svg {
+  flex: none;
+}
+.admin-sidebar-footer {
+  border-top: 1px solid rgba(148, 163, 184, 0.12);
+  padding-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.admin-user {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 6px 8px;
+}
+.admin-avatar {
+  flex: none;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-weight: 800;
+  font-size: 0.85rem;
+  color: #fff;
+  background: linear-gradient(135deg, #334155, #1e293b);
+  border: 1px solid rgba(148, 163, 184, 0.25);
+}
+.admin-user-meta {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.admin-user-meta strong {
+  color: #e2e8f0;
+  font-size: 0.9rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.admin-user-meta span {
+  color: #64748b;
+  font-size: 0.8rem;
+}
+.admin-logout:hover {
+  background: rgba(239, 68, 68, 0.14);
+  color: #fca5a5;
+}
+
+/* ---- Main column ---- */
+.admin-main {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+.admin-topbar {
+  position: sticky;
+  top: 0;
+  z-index: 15;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 15px 28px;
+  background: rgba(245, 247, 251, 0.82);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid #e6ebf2;
+}
+.admin-topbar-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+.admin-page-heading h1 {
+  margin: 0;
+  font-size: 1.35rem;
+  font-weight: 800;
+  color: #0f172a;
+  letter-spacing: -0.01em;
+}
+.admin-page-heading p {
+  margin: 2px 0 0;
+  color: #64748b;
+  font-size: 0.86rem;
+}
+.admin-topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.admin-icon-btn {
+  width: 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  background: #fff;
+  color: #475569;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+.admin-icon-btn:hover {
+  background: #eef2ff;
+  color: var(--acc);
+  border-color: #c7d2fe;
+}
+.admin-role-pill {
+  padding: 7px 14px;
+  border-radius: 999px;
+  background: #eef2ff;
+  color: #4338ca;
+  font-weight: 800;
+  font-size: 0.8rem;
+}
+.admin-menu-btn { display: none; }
+.admin-scrim { display: none; }
+
+.admin-content {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding: 24px 28px 48px;
+  width: 100%;
+  max-width: 1440px;
+}
+
+/* Reset the student-portal 5vw side margins inside the shell. */
+.admin-shell .welcome-banner,
+.admin-shell .metric-grid,
+.admin-shell .white-panel,
+.admin-shell .two-grid,
+.admin-shell .three-grid,
+.admin-shell .dashboard-grid,
+.admin-shell .admin-stack,
+.admin-shell .notice-bar {
+  margin-left: 0;
+  margin-right: 0;
+}
+
+/* ---- Stat tiles ---- */
+.stat-row {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+}
+.stat-tile {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  padding: 18px;
+  background: #fff;
+  border: 1px solid #e6ebf2;
+  border-radius: 14px;
+  box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04);
+  transition: box-shadow 0.18s, transform 0.18s;
+}
+.stat-tile:hover {
+  box-shadow: 0 10px 26px rgba(16, 24, 40, 0.08);
+  transform: translateY(-2px);
+}
+.stat-tile-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.stat-chip {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+}
+.stat-value {
+  font-size: 1.95rem;
+  font-weight: 800;
+  line-height: 1;
+  color: #0f172a;
+}
+.stat-label {
+  color: #64748b;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+.stat-helper {
+  color: #94a3b8;
+  font-weight: 600;
+  font-size: 0.78rem;
+}
+.stat-tile.tone-blue .stat-chip { background: #eaf1ff; color: #2563eb; }
+.stat-tile.tone-violet .stat-chip { background: #f1ecff; color: #7c3aed; }
+.stat-tile.tone-teal .stat-chip { background: #e3f7f2; color: #0d9488; }
+.stat-tile.tone-amber .stat-chip { background: #fff2e0; color: #d97706; }
+.stat-tile.tone-rose .stat-chip { background: #fdebef; color: #e11d48; }
+
+/* ---- Panels / tables / forms scoped to the shell ---- */
+.admin-shell .white-panel {
+  padding: 20px 22px;
+  background: #fff;
+  border: 1px solid #e6ebf2;
+  border-radius: 14px;
+  box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04);
+}
+.admin-shell .white-panel h2 {
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: #0f172a;
+}
+.admin-shell .dashboard-grid { gap: 16px; }
+.admin-shell .table-row {
+  border-bottom: 1px solid #eef2f7;
+}
+.admin-shell .table-head {
+  color: #94a3b8;
+  letter-spacing: 0.05em;
+}
+.admin-shell .table-row:not(.table-head):hover {
+  background: #f8fafc;
+}
+.admin-shell input:not([type="checkbox"]):not([type="radio"]),
+.admin-shell textarea,
+.admin-shell select {
+  border: 1px solid #dbe2ec;
+  border-radius: 10px;
+  padding: 10px 12px;
+  background: #fff;
+  font-family: inherit;
+  font-size: 0.92rem;
+  color: #0f172a;
+}
+.admin-shell input:focus-visible,
+.admin-shell textarea:focus-visible,
+.admin-shell select:focus-visible {
+  outline: 2px solid #818cf8;
+  outline-offset: 1px;
+  border-color: #818cf8;
+}
+.admin-shell .action-btn {
+  border-radius: 10px;
+}
+.admin-shell .action-btn.blue { background: var(--acc); }
+.admin-shell .action-btn.blue:hover { background: #4338ca; }
+
+/* ---- Collapsed (desktop) ---- */
+.admin-shell.is-collapsed .admin-brand-text,
+.admin-shell.is-collapsed .admin-nav-label,
+.admin-shell.is-collapsed .admin-user-meta {
+  display: none;
+}
+.admin-shell.is-collapsed .admin-nav-item,
+.admin-shell.is-collapsed .admin-logout,
+.admin-shell.is-collapsed .admin-user,
+.admin-shell.is-collapsed .admin-brand {
+  justify-content: center;
+}
+.admin-shell.is-collapsed .admin-nav-item.active::before { left: -14px; }
+
+/* ---- Responsive: off-canvas sidebar ---- */
+@media (max-width: 1024px) {
+  .admin-shell,
+  .admin-shell.is-collapsed {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .admin-sidebar {
+    position: fixed;
+    left: 0;
+    top: 0;
+    width: 264px;
+    transform: translateX(-100%);
+    transition: transform 0.25s ease;
+    z-index: 60;
+  }
+  .admin-shell.is-open .admin-sidebar { transform: none; }
+  .admin-shell.is-collapsed .admin-brand-text,
+  .admin-shell.is-collapsed .admin-nav-label,
+  .admin-shell.is-collapsed .admin-user-meta { display: block; }
+  .admin-scrim {
+    display: block;
+    position: fixed;
+    inset: 0;
+    border: 0;
+    background: rgba(2, 6, 23, 0.5);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.25s ease;
+    z-index: 50;
+  }
+  .admin-shell.is-open .admin-scrim { opacity: 1; pointer-events: auto; }
+  .admin-menu-btn { display: grid; }
+  .admin-collapse-btn { display: none; }
+  .admin-content { padding: 20px 18px 40px; }
+  .admin-topbar { padding: 14px 18px; }
+  .stat-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 560px) {
+  .stat-row { grid-template-columns: minmax(0, 1fr); }
+  .admin-page-heading p { display: none; }
+}
