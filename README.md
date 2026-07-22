@@ -29,6 +29,9 @@ proxy, and a Vite React frontend.
 - Configurable exam security controls for clipboard, context menu, inspect
   shortcuts, fullscreen, and focus-loss tracking.
 - Admin visibility into queued jobs, completed reports, and security incidents.
+- Admin analytics dashboard (assignment completion, score/pass-rate metrics,
+  per-exam performance, incident breakdown) and an append-only audit log.
+- Alembic-managed database migrations, separated from data seeding.
 - Production-ready Nginx reverse proxy with security headers, auth/API rate
   limits, ACME challenge support, and optional Let's Encrypt TLS config.
 
@@ -171,6 +174,7 @@ The stack starts:
 | Service    | Purpose                                                         |
 | ---------- | --------------------------------------------------------------- |
 | `nginx`    | Public entrypoint, reverse proxy, security headers, rate limits |
+| `migrate`  | One-shot Alembic migration runner (`backend` waits for it)      |
 | `backend`  | FastAPI application workers                                     |
 | `worker`   | Queue consumer for email and report jobs                        |
 | `db`       | PostgreSQL data store                                           |
@@ -180,6 +184,48 @@ The stack starts:
 The default `docker/nginx.conf` is suitable for initial public setup because it
 serves `/.well-known/acme-challenge/`, proxies the frontend and API, adds
 security headers, and rate limits auth/API traffic.
+
+## Database Migrations
+
+Schema is managed by Alembic, not by runtime `create_all`. In the production
+Compose stack the one-shot `migrate` service runs `alembic upgrade head` before
+`backend` and `worker` start (they `depend_on` it completing). The single-image
+entrypoint runs the same migration step before launching Gunicorn.
+
+Run migration commands manually from `backend/` (or inside a container):
+
+```bash
+alembic upgrade head          # apply all migrations
+alembic downgrade -1          # roll back the most recent migration
+alembic downgrade base        # roll back everything
+alembic current               # show the applied revision
+alembic history               # list the migration history
+
+# Create a new migration after changing the ORM models
+alembic revision --autogenerate -m "describe the change"
+```
+
+A convenience wrapper is also available:
+
+```bash
+python -m app.cli migrate     # alembic upgrade head
+python -m app.cli seed         # create the bootstrap admin (separate from schema)
+```
+
+> [!NOTE]
+> **Adopting migrations on an existing database** that was created by the older
+> `create_all` flow: run `alembic stamp head` once so Alembic records the current
+> schema as up to date, then use `alembic upgrade head` for future changes.
+
+Schema management and data seeding are intentionally separate: migrations create
+and evolve tables, while the `INITIAL_ADMIN_*` bootstrap (via `python -m app.cli
+seed`, or automatically on app startup) only inserts the first admin row.
+
+- **testing**: schema is built directly from the ORM models (`create_all`), so
+  the test suite needs no Postgres or migration run.
+- **development**: the app applies migrations automatically on startup.
+- **production**: the `migrate` service/entrypoint applies migrations; the app
+  process only seeds.
 
 ### Enable HTTPS
 
@@ -286,12 +332,19 @@ GOOGLE_ALLOWED_DOMAINS=[]
 Assignment notifications and submitted-attempt reports are stored in the
 database-backed queue and processed by the `worker` service.
 
-Admins can inspect queue activity through:
+Admins can inspect queue activity and operational metrics through:
 
 ```text
-GET /api/v1/admin/jobs
-GET /api/v1/admin/reports
+GET /api/v1/admin/jobs           # queued/processed background jobs
+GET /api/v1/admin/reports        # completed attempt reports
+GET /api/v1/admin/analytics      # exam, assignment, results, and incident metrics
+GET /api/v1/admin/audit-events   # append-only log of privileged admin actions
 ```
+
+The admin dashboard's **Analytics** tab renders assignment-completion breakdown,
+score metrics with pass rate, per-exam performance, security-incident types, and
+recent audit activity. Privileged mutations (creating/deleting students, exams,
+and assignments) are recorded to the `audit_events` table.
 
 SMTP is optional. If SMTP variables are empty, the portal still runs, but email
 delivery features will not send real messages.

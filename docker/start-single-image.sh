@@ -1,6 +1,9 @@
 #!/bin/sh
 set -eu
 
+# Apply database migrations once before starting the app workers.
+python -m app.cli migrate
+
 gunicorn app.main:app \
   -k uvicorn.workers.UvicornWorker \
   --bind 127.0.0.1:8000 \

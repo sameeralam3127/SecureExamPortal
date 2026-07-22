@@ -1,3 +1,25 @@
+x-backend-env: &backend-env
+  ENVIRONMENT: production
+  AUTH_SECRET_KEY: ${AUTH_SECRET_KEY:?Set AUTH_SECRET_KEY before starting production containers}
+  DATABASE_URL: ${DATABASE_URL:?Set DATABASE_URL before starting production containers}
+  CORS_ORIGINS: ${CORS_ORIGINS:?Set CORS_ORIGINS before starting production containers}
+  FRONTEND_BASE_URL: ${FRONTEND_BASE_URL:?Set FRONTEND_BASE_URL before starting production containers}
+  ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES:-120}
+  AUTH_RATE_LIMIT_ATTEMPTS: ${AUTH_RATE_LIMIT_ATTEMPTS:-10}
+  AUTH_RATE_LIMIT_WINDOW_SECONDS: ${AUTH_RATE_LIMIT_WINDOW_SECONDS:-60}
+  GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+  GOOGLE_ALLOWED_DOMAINS: ${GOOGLE_ALLOWED_DOMAINS:-[]}
+  SMTP_HOST: ${SMTP_HOST:-}
+  SMTP_PORT: ${SMTP_PORT:-587}
+  SMTP_USERNAME: ${SMTP_USERNAME:-}
+  SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+  SMTP_FROM_EMAIL: ${SMTP_FROM_EMAIL:-no-reply@secureexamportal.com}
+  SMTP_USE_TLS: ${SMTP_USE_TLS:-true}
+  INITIAL_ADMIN_USERNAME: ${INITIAL_ADMIN_USERNAME:-}
+  INITIAL_ADMIN_PASSWORD: ${INITIAL_ADMIN_PASSWORD:-}
+  INITIAL_ADMIN_EMAIL: ${INITIAL_ADMIN_EMAIL:-}
+  INITIAL_ADMIN_FULL_NAME: ${INITIAL_ADMIN_FULL_NAME:-Portal Administrator}
+
 services:
   db:
     image: postgres:16-alpine
@@ -35,35 +57,30 @@ services:
       - certbot_webroot:/var/www/certbot
       - letsencrypt:/etc/letsencrypt
 
+  migrate:
+    build:
+      context: ./backend
+      dockerfile: docker/Dockerfile
+    command: python -m app.cli migrate
+    environment:
+      <<: *backend-env
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: "no"
+
   backend:
     build:
       context: ./backend
       dockerfile: docker/Dockerfile
     environment:
-      ENVIRONMENT: production
-      AUTH_SECRET_KEY: ${AUTH_SECRET_KEY:?Set AUTH_SECRET_KEY before starting production containers}
-      DATABASE_URL: ${DATABASE_URL:?Set DATABASE_URL before starting production containers}
-      CORS_ORIGINS: ${CORS_ORIGINS:?Set CORS_ORIGINS before starting production containers}
-      FRONTEND_BASE_URL: ${FRONTEND_BASE_URL:?Set FRONTEND_BASE_URL before starting production containers}
-      ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES:-120}
-      AUTH_RATE_LIMIT_ATTEMPTS: ${AUTH_RATE_LIMIT_ATTEMPTS:-10}
-      AUTH_RATE_LIMIT_WINDOW_SECONDS: ${AUTH_RATE_LIMIT_WINDOW_SECONDS:-60}
-      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
-      GOOGLE_ALLOWED_DOMAINS: ${GOOGLE_ALLOWED_DOMAINS:-[]}
-      SMTP_HOST: ${SMTP_HOST:-}
-      SMTP_PORT: ${SMTP_PORT:-587}
-      SMTP_USERNAME: ${SMTP_USERNAME:-}
-      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
-      SMTP_FROM_EMAIL: ${SMTP_FROM_EMAIL:-no-reply@secureexamportal.com}
-      SMTP_USE_TLS: ${SMTP_USE_TLS:-true}
-      INITIAL_ADMIN_USERNAME: ${INITIAL_ADMIN_USERNAME:-}
-      INITIAL_ADMIN_PASSWORD: ${INITIAL_ADMIN_PASSWORD:-}
-      INITIAL_ADMIN_EMAIL: ${INITIAL_ADMIN_EMAIL:-}
-      INITIAL_ADMIN_FULL_NAME: ${INITIAL_ADMIN_FULL_NAME:-Portal Administrator}
+      <<: *backend-env
       FORWARDED_ALLOW_IPS: "*"
     depends_on:
       db:
         condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
     restart: unless-stopped
 
   worker:
@@ -72,30 +89,13 @@ services:
       dockerfile: docker/Dockerfile
     command: python -m app.worker
     environment:
-      ENVIRONMENT: production
-      AUTH_SECRET_KEY: ${AUTH_SECRET_KEY:?Set AUTH_SECRET_KEY before starting production containers}
-      DATABASE_URL: ${DATABASE_URL:?Set DATABASE_URL before starting production containers}
-      CORS_ORIGINS: ${CORS_ORIGINS:?Set CORS_ORIGINS before starting production containers}
-      FRONTEND_BASE_URL: ${FRONTEND_BASE_URL:?Set FRONTEND_BASE_URL before starting production containers}
-      ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES:-120}
-      AUTH_RATE_LIMIT_ATTEMPTS: ${AUTH_RATE_LIMIT_ATTEMPTS:-10}
-      AUTH_RATE_LIMIT_WINDOW_SECONDS: ${AUTH_RATE_LIMIT_WINDOW_SECONDS:-60}
-      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
-      GOOGLE_ALLOWED_DOMAINS: ${GOOGLE_ALLOWED_DOMAINS:-[]}
-      SMTP_HOST: ${SMTP_HOST:-}
-      SMTP_PORT: ${SMTP_PORT:-587}
-      SMTP_USERNAME: ${SMTP_USERNAME:-}
-      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
-      SMTP_FROM_EMAIL: ${SMTP_FROM_EMAIL:-no-reply@secureexamportal.com}
-      SMTP_USE_TLS: ${SMTP_USE_TLS:-true}
-      INITIAL_ADMIN_USERNAME: ${INITIAL_ADMIN_USERNAME:-}
-      INITIAL_ADMIN_PASSWORD: ${INITIAL_ADMIN_PASSWORD:-}
-      INITIAL_ADMIN_EMAIL: ${INITIAL_ADMIN_EMAIL:-}
-      INITIAL_ADMIN_FULL_NAME: ${INITIAL_ADMIN_FULL_NAME:-Portal Administrator}
+      <<: *backend-env
       WORKER_POLL_INTERVAL_SECONDS: ${WORKER_POLL_INTERVAL_SECONDS:-2}
     depends_on:
       db:
         condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
     restart: unless-stopped
 
   frontend:

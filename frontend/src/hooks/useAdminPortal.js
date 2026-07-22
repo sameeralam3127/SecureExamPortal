@@ -8,6 +8,8 @@ import { defaultQuestion, emptyExamForm, emptyStudentForm, examBulkTemplate, use
  */
 export function useAdminPortal(api, setMessage) {
   const [adminStats, setAdminStats] = useState(null)
+  const [analytics, setAnalytics] = useState(null)
+  const [auditEvents, setAuditEvents] = useState([])
   const [students, setStudents] = useState([])
   const [exams, setExams] = useState([])
   const [assignments, setAssignments] = useState([])
@@ -21,18 +23,23 @@ export function useAdminPortal(api, setMessage) {
 
   const loadAdminData = useCallback(async () => {
     try {
-      const [statsData, studentsData, examsData, assignmentData, incidentData] = await Promise.all([
-        api('/api/v1/admin/dashboard'),
-        api('/api/v1/admin/students'),
-        api('/api/v1/admin/exams'),
-        api('/api/v1/admin/assignments'),
-        api('/api/v1/admin/security-incidents'),
-      ])
+      const [statsData, studentsData, examsData, assignmentData, incidentData, analyticsData, auditData] =
+        await Promise.all([
+          api('/api/v1/admin/dashboard'),
+          api('/api/v1/admin/students'),
+          api('/api/v1/admin/exams'),
+          api('/api/v1/admin/assignments'),
+          api('/api/v1/admin/security-incidents'),
+          api('/api/v1/admin/analytics'),
+          api('/api/v1/admin/audit-events'),
+        ])
       setAdminStats(statsData)
       setStudents(studentsData)
       setExams(examsData)
       setAssignments(assignmentData)
       setSecurityIncidents(incidentData)
+      setAnalytics(analyticsData)
+      setAuditEvents(auditData)
     } catch (error) {
       setMessage(error.message)
     }
@@ -211,6 +218,8 @@ export function useAdminPortal(api, setMessage) {
 
   return {
     adminStats,
+    analytics,
+    auditEvents,
     students,
     exams,
     assignments,

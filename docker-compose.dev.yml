@@ -81,6 +81,8 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      backend:
+        condition: service_started
     volumes:
       - ./backend:/app
     command: python -m app.worker
